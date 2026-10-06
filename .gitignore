@@ -1,0 +1,19 @@
+# Build output and caches (generated, never uploaded)
+build/
+.gradle/
+.kotlin/
+.externalNativeBuild
+.cxx
+/captures
+
+# Personal / machine-specific
+local.properties
+.idea/
+*.iml
+.DS_Store
+Claude outputs/
+
+# NEVER upload signing keys or finished APKs to GitHub
+*.jks
+*.keystore
+/app/release/

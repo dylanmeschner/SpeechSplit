@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Speech Split</title>
+<meta name="description" content="A speech timer that splits your talk into parts. For Windows and Android.">
+<link rel="icon" href="img/icon.png">
+<style>
+  :root {
+    --bg: #F3F4F6; --surface: #FBFBFC; --line: #DADDE2;
+    --text: #1F2328; --sub: #5F6670; --ink: #2B3A4A; --on-ink: #FFFFFF;
+    --green: #2E7D4F; --amber: #B26A00;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #131517; --surface: #1D2023; --line: #363B40;
+      --text: #E4E6E8; --sub: #979DA4; --ink: #D5DBE1; --on-ink: #15181B;
+      --green: #6CCB8B; --amber: #F2C14E;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 17px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 0 20px; }
+  header { display: flex; justify-content: flex-end; padding-top: 16px; gap: 4px; }
+  .lang button {
+    font: inherit; font-size: 14px; color: var(--sub); background: none; border: 0;
+    padding: 6px 10px; border-radius: 8px; cursor: pointer;
+  }
+  .lang button[aria-pressed="true"] { color: var(--text); background: var(--surface); font-weight: 600; }
+
+  .hero { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 48px; align-items: center; padding: 40px 0 56px; }
+  .hero img.icon { width: 72px; height: 72px; border-radius: 18px; }
+  h1 { font-size: clamp(40px, 6vw, 60px); line-height: 1.05; margin: 18px 0 12px; letter-spacing: -0.02em; }
+  .tagline { font-size: 20px; color: var(--sub); margin: 0 0 28px; max-width: 30ch; }
+  .buttons { display: flex; flex-wrap: wrap; gap: 12px; }
+  .btn {
+    display: inline-flex; flex-direction: column; justify-content: center; text-decoration: none;
+    padding: 14px 22px; border-radius: 14px; min-width: 230px;
+    background: var(--ink); color: var(--on-ink); border: 1.5px solid var(--ink);
+  }
+  .btn.secondary { background: transparent; color: var(--text); border-color: var(--line); }
+  .btn strong { font-size: 17px; }
+  .btn span { font-size: 13px; opacity: 0.75; }
+  .btn:hover { filter: brightness(1.08); }
+  .version { color: var(--sub); font-size: 14px; margin-top: 14px; }
+  .note {
+    margin-top: 22px; padding: 14px 16px; border-radius: 12px; font-size: 14px; color: var(--sub);
+    background: var(--surface); border: 1px solid var(--line); max-width: 52ch;
+  }
+  .note b { color: var(--text); }
+
+  .shots { display: flex; gap: 16px; justify-content: center; }
+  .shots img {
+    width: 48%; max-width: 240px; height: auto; border-radius: 16px; border: 1px solid var(--line);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.12);
+  }
+  .shots img:nth-child(2) { margin-top: 40px; }
+
+  h2 { font-size: 26px; margin: 0 0 20px; letter-spacing: -0.01em; }
+  .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; padding-bottom: 56px; }
+  .feature { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 20px; }
+  .feature h3 { font-size: 17px; margin: 0 0 6px; }
+  .feature p { margin: 0; color: var(--sub); font-size: 15px; }
+  .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; background: var(--green); }
+  .feature:nth-child(2n) .dot { background: var(--amber); }
+
+  .gallery { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; padding-bottom: 64px; }
+  .gallery img { width: 100%; height: auto; border-radius: 14px; border: 1px solid var(--line); }
+
+  footer { border-top: 1px solid var(--line); padding: 24px 0 40px; color: var(--sub); font-size: 14px; }
+
+  @media (max-width: 820px) {
+    .hero { grid-template-columns: 1fr; gap: 32px; padding-top: 16px; }
+    .features { grid-template-columns: 1fr; }
+    .gallery { grid-template-columns: repeat(2, 1fr); }
+    .btn { min-width: 0; flex: 1 1 100%; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="lang" role="group" aria-label="Language">
+    <button data-lang="en">English</button>
+    <button data-lang="no">Norsk</button>
+    <button data-lang="de">Deutsch</button>
+  </header>
+
+  <section class="hero">
+    <div>
+      <img class="icon" src="img/icon.png" alt="">
+      <h1>Speech Split</h1>
+      <p class="tagline" data-t="tagline"></p>
+      <div class="buttons">
+        <a class="btn" id="dl-windows" href="#">
+          <strong data-t="dlWindows"></strong><span data-t="dlWindowsSub"></span>
+        </a>
+        <a class="btn secondary" id="dl-android" href="#">
+          <strong data-t="dlAndroid"></strong><span data-t="dlAndroidSub"></span>
+        </a>
+      </div>
+      <p class="version" id="version" data-t="free"></p>
+      <p class="note" data-t="smartscreen"></p>
+    </div>
+    <div class="shots">
+      <img src="img/ready-light.webp" alt="" width="440" height="820">
+      <img src="img/timer-light.webp" alt="" width="440" height="820">
+    </div>
+  </section>
+
+  <h2 data-t="featuresTitle"></h2>
+  <section class="features">
+    <div class="feature"><h3><span class="dot"></span><span data-t="f1t"></span></h3><p data-t="f1"></p></div>
+    <div class="feature"><h3><span class="dot"></span><span data-t="f2t"></span></h3><p data-t="f2"></p></div>
+    <div class="feature"><h3><span class="dot"></span><span data-t="f3t"></span></h3><p data-t="f3"></p></div>
+    <div class="feature"><h3><span class="dot"></span><span data-t="f4t"></span></h3><p data-t="f4"></p></div>
+    <div class="feature"><h3><span class="dot"></span><span data-t="f5t"></span></h3><p data-t="f5"></p></div>
+    <div class="feature"><h3><span class="dot"></span><span data-t="f6t"></span></h3><p data-t="f6"></p></div>
+  </section>
+
+  <section class="gallery">
+    <img src="img/ready-light.webp" alt="" loading="lazy" width="440" height="820">
+    <img src="img/timer-light.webp" alt="" loading="lazy" width="440" height="820">
+    <img src="img/bigclock-light.webp" alt="" loading="lazy" width="440" height="820">
+    <img src="img/history-dark.webp" alt="" loading="lazy" width="440" height="820">
+  </section>
+
+  <footer data-t="footer"></footer>
+</div>
+
+<script>
+  // Fill these in only if the page is hosted somewhere other than GitHub Pages.
+  var FALLBACK_OWNER = "", FALLBACK_REPO = "";
+
+  // On GitHub Pages the address is https://OWNER.github.io/REPO/, so the links work out themselves.
+  var host = location.hostname, owner = FALLBACK_OWNER, repo = FALLBACK_REPO;
+  if (host.endsWith(".github.io")) {
+    owner = host.split(".")[0];
+    repo = location.pathname.split("/")[1] || (owner + ".github.io");
+  }
+  var releases = "https://github.com/" + owner + "/" + repo + "/releases";
+  document.getElementById("dl-windows").href = releases + "/latest/download/SpeechSplit-Setup.msi";
+  document.getElementById("dl-android").href = releases + "/latest/download/SpeechSplit.apk";
+
+  var T = {
+    en: {
+      tagline: "A speech timer that splits your talk into parts, so you always know if you’re on time.",
+      dlWindows: "Download for Windows", dlWindowsSub: "Installer (.msi) · Windows 10 and 11",
+      dlAndroid: "Download for Android", dlAndroidSub: "App (.apk) · Android 7 and newer",
+      free: "Free, no ads, no account.",
+      version: "Latest version: {v} · Free, no ads, no account.",
+      smartscreen: "<b>First time on Windows?</b> Windows may say “Windows protected your PC”, because the app is new and not yet known to Microsoft. Click <b>More info</b> and then <b>Run anyway</b>. On Android, allow installing from your browser when asked.",
+      featuresTitle: "What it does",
+      f1t: "Split your speech", f1: "Give each part its own time, and see what’s left of the current part and of the whole talk.",
+      f2t: "Ahead or behind", f2: "See at a glance whether you’re ahead or behind your plan. Time saved early carries over to later parts.",
+      f3t: "Practice history", f3: "Every run is saved. See your averages per part and get suggestions where you keep running over.",
+      f4t: "Big clock", f4: "A full-screen, high-contrast clock you can read from the lectern.",
+      f5t: "Keyboard and clicker", f5: "On Windows, use the keyboard or a presentation clicker: Page Down for next, Space to pause.",
+      f6t: "Calm by design", f6: "Light and dark mode, no sounds, gentle colour alerts. And confetti when you land exactly on time.",
+      footer: "Speech Split · Made by SRRLSM"
+    },
+    no: {
+      tagline: "En taletimer som deler talen inn i deler, så du alltid vet om du ligger i rute.",
+      dlWindows: "Last ned for Windows", dlWindowsSub: "Installasjonsfil (.msi) · Windows 10 og 11",
+      dlAndroid: "Last ned for Android", dlAndroidSub: "App (.apk) · Android 7 og nyere",
+      free: "Gratis, uten reklame og uten konto.",
+      version: "Siste versjon: {v} · Gratis, uten reklame og uten konto.",
+      smartscreen: "<b>Første gang på Windows?</b> Windows kan vise «Windows beskyttet PC-en», fordi appen er ny og ukjent for Microsoft. Klikk <b>Mer informasjon</b> og så <b>Kjør likevel</b>. På Android godtar du installasjon fra nettleseren når du blir spurt.",
+      featuresTitle: "Dette kan den",
+      f1t: "Del opp talen", f1: "Gi hver del sin egen tid, og se hvor mye som er igjen av delen og av hele talen.",
+      f2t: "Foran eller bak", f2: "Se med ett blikk om du ligger foran eller bak planen. Tid du sparer tidlig, tas med videre.",
+      f3t: "Øvingshistorikk", f3: "Hver runde lagres. Se snittet per del og få forslag der du stadig går over tiden.",
+      f4t: "Stor klokke", f4: "En klokke i fullskjerm med høy kontrast, lett å lese fra talerstolen.",
+      f5t: "Tastatur og klikker", f5: "På Windows kan du bruke tastaturet eller en presentasjonsklikker: Page Down for neste, mellomrom for pause.",
+      f6t: "Rolig design", f6: "Lys og mørk modus, ingen lyder og rolige fargevarsler. Og konfetti når du treffer tiden helt nøyaktig.",
+      footer: "Speech Split · Laget av SRRLSM"
+    },
+    de: {
+      tagline: "Ein Rede-Timer, der deinen Vortrag in Abschnitte teilt, damit du immer weißt, ob du im Plan bist.",
+      dlWindows: "Für Windows herunterladen", dlWindowsSub: "Installer (.msi) · Windows 10 und 11",
+      dlAndroid: "Für Android herunterladen", dlAndroidSub: "App (.apk) · Android 7 und neuer",
+      free: "Kostenlos, ohne Werbung, ohne Konto.",
+      version: "Neueste Version: {v} · Kostenlos, ohne Werbung, ohne Konto.",
+      smartscreen: "<b>Zum ersten Mal unter Windows?</b> Windows zeigt eventuell „Der Computer wurde durch Windows geschützt“, weil die App neu und Microsoft noch nicht bekannt ist. Klicke auf <b>Weitere Informationen</b> und dann auf <b>Trotzdem ausführen</b>. Unter Android erlaubst du die Installation aus dem Browser, wenn du gefragt wirst.",
+      featuresTitle: "Das kann die App",
+      f1t: "Rede aufteilen", f1: "Gib jedem Abschnitt eine eigene Zeit und sieh, wie viel vom Abschnitt und von der ganzen Rede übrig ist.",
+      f2t: "Vor oder hinter dem Plan", f2: "Sieh auf einen Blick, ob du vor oder hinter dem Plan liegst. Gesparte Zeit wird mitgenommen.",
+      f3t: "Übungsverlauf", f3: "Jeder Durchlauf wird gespeichert. Sieh deinen Schnitt pro Abschnitt und bekomme Vorschläge, wo du regelmäßig überziehst.",
+      f4t: "Große Uhr", f4: "Eine bildschirmfüllende Uhr mit hohem Kontrast, gut lesbar vom Rednerpult.",
+      f5t: "Tastatur und Presenter", f5: "Unter Windows mit Tastatur oder Presenter: Bild ab für weiter, Leertaste für Pause.",
+      f6t: "Ruhiges Design", f6: "Heller und dunkler Modus, keine Töne, sanfte Farbhinweise. Und Konfetti, wenn du genau im Ziel landest.",
+      footer: "Speech Split · Gemacht von SRRLSM"
+    }
+  };
+
+  var latest = null;
+  function setLang(lang) {
+    var t = T[lang] || T.en;
+    document.documentElement.lang = lang;
+    document.querySelectorAll("[data-t]").forEach(function (el) { el.innerHTML = t[el.dataset.t]; });
+    if (latest) document.getElementById("version").textContent = t.version.replace("{v}", latest);
+    document.querySelectorAll(".lang button").forEach(function (b) {
+      b.setAttribute("aria-pressed", b.dataset.lang === lang ? "true" : "false");
+    });
+    try { localStorage.setItem("lang", lang); } catch (e) {}
+  }
+  document.querySelectorAll(".lang button").forEach(function (b) {
+    b.addEventListener("click", function () { setLang(b.dataset.lang); });
+  });
+
+  var saved = null;
+  try { saved = localStorage.getItem("lang"); } catch (e) {}
+  var browser = (navigator.language || "en").slice(0, 2);
+  var start = saved || (browser === "nb" || browser === "nn" || browser === "no" ? "no" : browser === "de" ? "de" : "en");
+  setLang(start);
+
+  // Show the latest version number (quietly skipped if GitHub can't be reached)
+  if (owner) {
+    fetch("https://api.github.com/repos/" + owner + "/" + repo + "/releases/latest")
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) { if (d && d.tag_name) { latest = d.tag_name.replace(/^v/, ""); setLang(document.documentElement.lang); } })
+      .catch(function () {});
+  }
+</script>
+</body>
+</html>
