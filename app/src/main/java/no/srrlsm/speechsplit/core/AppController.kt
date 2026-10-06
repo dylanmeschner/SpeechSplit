@@ -315,6 +315,33 @@ class AppController(
         if (isQuickTimer) backToLibrary() else currentScreen = AppScreen.READY
     }
 
+    // --- Version and updates --------------------------------------------------
+    val appVersion: String get() = platform.appVersion
+
+    var updateState by mutableStateOf<UpdateState>(UpdateState.Idle)
+        private set
+
+    /** The "new version" banner can be closed for this session with "Later". */
+    var updateBannerHidden by mutableStateOf(false)
+        private set
+
+    fun hideUpdateBanner() {
+        updateBannerHidden = true
+    }
+
+    fun checkForUpdates() {
+        if (updateState == UpdateState.Checking) return
+        updateState = UpdateState.Checking
+        scope.launch {
+            val release = platform.fetchLatestRelease()
+            updateState = when {
+                release == null -> UpdateState.Failed
+                isNewerVersion(release.version, appVersion) -> UpdateState.Available(release)
+                else -> UpdateState.UpToDate
+            }
+        }
+    }
+
     /** Call when the app is closed for good. */
     fun dispose() {
         ticker?.cancel()
@@ -386,5 +413,10 @@ class AppController(
             platform.setDnd(false)
             dndOnByUs = false
         }
+    }
+
+    init {
+        // Runs last, after everything above is set up
+        if (settings.autoUpdateCheck) checkForUpdates()
     }
 }

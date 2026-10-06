@@ -132,6 +132,7 @@ object JsonCodec {
         .put("watchAlerts", s.watchAlerts)
         .put("dndWhileSpeaking", s.dndWhileSpeaking)
         .put("lecternMode", s.lecternMode)
+        .put("autoUpdateCheck", s.autoUpdateCheck)
         .toString(2)
 
     fun settingsFromJson(text: String): AppSettings {
@@ -150,6 +151,7 @@ object JsonCodec {
             watchAlerts = o.optBoolean("watchAlerts", d.watchAlerts),
             dndWhileSpeaking = o.optBoolean("dndWhileSpeaking", d.dndWhileSpeaking),
             lecternMode = o.optBoolean("lecternMode", d.lecternMode),
+            autoUpdateCheck = o.optBoolean("autoUpdateCheck", d.autoUpdateCheck),
         )
     }
 }

@@ -22,6 +22,12 @@ interface AppStore {
 
 /** Device features used by the app logic. Anything a platform lacks can simply do nothing. */
 interface PlatformServices {
+    /** This app's version, e.g. "2.0" ("dev" when run from the code). */
+    val appVersion: String get() = "dev"
+
+    /** Asks GitHub for the newest release. Null if offline or GitHub can't be reached. */
+    suspend fun fetchLatestRelease(): ReleaseInfo? = null
+
     /** Two-letter language code of the device, e.g. "nb", "de", "en". */
     val systemLanguage: String
 

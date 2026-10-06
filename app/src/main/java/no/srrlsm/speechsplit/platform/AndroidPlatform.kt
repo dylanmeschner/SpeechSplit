@@ -16,6 +16,8 @@ import androidx.core.app.NotificationManagerCompat
 import no.srrlsm.speechsplit.MainActivity
 import no.srrlsm.speechsplit.R
 import no.srrlsm.speechsplit.core.PlatformServices
+import no.srrlsm.speechsplit.core.ReleaseInfo
+import no.srrlsm.speechsplit.jvm.UpdateClient
 import no.srrlsm.speechsplit.core.Strings
 import no.srrlsm.speechsplit.core.TimeStatus
 import java.text.DateFormat
@@ -29,6 +31,16 @@ class AndroidPlatform(context: Context) : PlatformServices {
     private val notificationManager = app.getSystemService(NotificationManager::class.java)
 
     override val systemLanguage: String get() = Locale.getDefault().language
+
+    override val appVersion: String =
+        try {
+            @Suppress("DEPRECATION")
+            app.packageManager.getPackageInfo(app.packageName, 0).versionName ?: "dev"
+        } catch (e: Exception) {
+            "dev"
+        }
+
+    override suspend fun fetchLatestRelease(): ReleaseInfo? = UpdateClient.fetchLatest()
 
     override fun monotonicMs(): Long = SystemClock.elapsedRealtime()
 

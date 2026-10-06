@@ -2,6 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Only used to ask GitHub whether a newer version exists -->
+    <uses-permission android:name="android.permission.INTERNET" />
     <!-- Silent notifications that make a connected smartwatch buzz (asked for only when switched on) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- "Do Not Disturb while speaking" (the user grants this in system settings) -->

@@ -91,4 +91,15 @@ class TimerEngineTest {
         assertEquals(270, parseTimeInput("4:30"))
         assertEquals(290, parseTimeInput("4.5"))
     }
+
+    @Test
+    fun versionComparison() {
+        assertTrue(isNewerVersion("2.1", "2.0"))
+        assertTrue(isNewerVersion("v2.10", "2.9"))
+        assertTrue(isNewerVersion("3", "2.9.9"))
+        assertTrue(!isNewerVersion("2.0", "2.0"))
+        assertTrue(!isNewerVersion("2.0", "2.0.0"))
+        assertTrue(!isNewerVersion("1.9", "2.0"))
+        assertTrue(!isNewerVersion("2.1", "dev"))
+    }
 }

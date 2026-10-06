@@ -87,6 +87,7 @@ fun LibraryScreen(app: AppController) {
         }
 
         Spacer(Modifier.height(24.dp))
+        UpdateBanner(app)
 
         if (app.speechPlans.isEmpty()) {
             Text(s.noSpeeches, color = c.textSub, modifier = Modifier.weight(1f))

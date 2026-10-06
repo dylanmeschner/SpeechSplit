@@ -71,6 +71,7 @@ class AndroidStore(context: Context) : AppStore {
             watchAlerts = getBoolean("watchAlerts", false),
             dndWhileSpeaking = getBoolean("dndWhileSpeaking", false),
             lecternMode = getBoolean("lecternMode", false),
+            autoUpdateCheck = getBoolean("autoUpdateCheck", true),
         )
     }
 
@@ -88,6 +89,7 @@ class AndroidStore(context: Context) : AppStore {
             .putBoolean("watchAlerts", settings.watchAlerts)
             .putBoolean("dndWhileSpeaking", settings.dndWhileSpeaking)
             .putBoolean("lecternMode", settings.lecternMode)
+            .putBoolean("autoUpdateCheck", settings.autoUpdateCheck)
             .apply()
     }
 

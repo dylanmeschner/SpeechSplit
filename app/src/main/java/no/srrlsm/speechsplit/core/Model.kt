@@ -82,6 +82,8 @@ data class AppSettings(
     val dndWhileSpeaking: Boolean = false,
     /** Big, high-contrast clock for reading from a distance. */
     val lecternMode: Boolean = false,
+    /** Ask GitHub for a newer version when the app starts. */
+    val autoUpdateCheck: Boolean = true,
 )
 
 val WarningOptions = listOf(0, 5, 10, 15, 20)

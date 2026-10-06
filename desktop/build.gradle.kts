@@ -42,6 +42,8 @@ dependencies {
 compose.desktop {
     application {
         mainClass = "no.srrlsm.speechsplit.desktop.MainKt"
+        // The app reads its own version number from this (shown in Settings, used for update checks)
+        jvmArgs += listOf("-Dspeechsplit.version=$appVersion")
 
         // Package with a full JDK 21 (downloaded automatically), which includes the installer tools
         javaHome = javaToolchains.launcherFor {

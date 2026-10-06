@@ -43,8 +43,11 @@ private class MemoryStore(var settings: AppSettings) : AppStore {
     override fun importPlan(text: String, fallbackTitle: String): SpeechPlan? = null
 }
 
-private class FakeClockPlatform : PlatformServices {
+private class FakeClockPlatform(private val newer: Boolean = false) : PlatformServices {
     var now = 0L
+    override val appVersion = "2.0"
+    override suspend fun fetchLatestRelease() = if (!newer) null else no.srrlsm.speechsplit.core.ReleaseInfo(
+        version = "2.1", notes = "## New\n- Faster start\n- **Better** history", pageUrl = "", windowsUrl = null, androidUrl = null)
     override val systemLanguage = "en"
     override fun monotonicMs() = now
     override fun epochMs() = 1_791_300_000_000L
@@ -66,6 +69,8 @@ private object NoUi : UiActions {
     override fun hasNotificationPermission() = false
     override fun requestNotificationPermission(onResult: (Boolean) -> Unit) = onResult(false)
     override fun openDndSettings() {}
+    override fun openUrl(url: String) {}
+    override fun installUpdate(release: no.srrlsm.speechsplit.core.ReleaseInfo) {}
 }
 
 fun main(args: Array<String>) {
@@ -78,7 +83,7 @@ fun main(args: Array<String>) {
 
     for (dark in listOf(false, true)) {
         val mode = if (dark) "dark" else "light"
-        fun shot(name: String, setup: (AppController, FakeClockPlatform) -> Unit) {
+        fun shot(name: String, height: Int = 1640, newer: Boolean = false, setup: (AppController, FakeClockPlatform) -> Unit) {
             val store = MemoryStore(AppSettings(themeMode = if (dark) ThemeMode.DARK else ThemeMode.LIGHT))
             store.plans = listOf(plan, SpeechPlan(title = "Wedding toast", segments = listOf(intro, close)))
             store.runs = listOf(30, 45, 12, 50).mapIndexed { i, over ->
@@ -90,10 +95,11 @@ fun main(args: Array<String>) {
                         RunSegment(close.id, close.title, 120, 121),
                     ))
             }
-            val platform = FakeClockPlatform()
+            val platform = FakeClockPlatform(newer)
             val app = AppController(store, platform, CoroutineScope(Job()))
             setup(app, platform)
-            val scene = ImageComposeScene(width = 880, height = 1640, density = Density(2f)) {
+            Thread.sleep(300) // let the (fake) update check finish
+            val scene = ImageComposeScene(width = 880, height = height, density = Density(2f)) {
                 SpeechSplitTheme(darkTheme = dark) {
                     CompositionLocalProvider(LocalUiActions provides NoUi) { SpeechSplitApp(app) }
                 }
@@ -117,5 +123,7 @@ fun main(args: Array<String>) {
         }
         shot("5-history") { app, _ -> app.openPlan(app.speechPlans[0]); app.openHistory() }
         shot("6-settings") { app, _ -> app.openSettings() }
+        shot("7-update-banner", newer = true) { _, _ -> }
+        shot("8-about", height = 4400, newer = true) { app, _ -> app.openSettings() }
     }
 }

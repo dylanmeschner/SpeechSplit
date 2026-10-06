@@ -137,6 +137,10 @@ fun SettingsScreen(app: AppController) {
                 Text(s.keyboardDesc, fontSize = 14.sp, color = AppTheme.colors.textSub)
             }
         }
+
+        SettingsSection(s.aboutTitle) {
+            AboutContent(app)
+        }
         Spacer(Modifier.height(24.dp))
     }
 }

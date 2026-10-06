@@ -168,6 +168,22 @@ data class Strings(
     val copiedToClipboard: String,
     val keyboardTitle: String,
     val keyboardDesc: String,
+    // Version and updates
+    val aboutTitle: String,
+    val versionLabel: (String) -> String,
+    val checkUpdates: String,
+    val checking: String,
+    val upToDate: String,
+    val updateFailed: String,
+    val updateAvailable: (String) -> String,
+    val updateNow: String,
+    val later: String,
+    val whatsNew: String,
+    val autoCheckTitle: String,
+    val autoCheckDesc: String,
+    val downloadingUpdate: String,
+    val updateHintAndroid: String,
+    val website: String,
 )
 
 val EnglishStrings = Strings(
@@ -317,6 +333,21 @@ val EnglishStrings = Strings(
     copiedToClipboard = "Copied. Paste it wherever you want to share it.",
     keyboardTitle = "KEYBOARD AND PRESENTATION CLICKER",
     keyboardDesc = "Space: pause or resume\n→, Page Down or Enter: next\n←, Page Up or Backspace: undo next\nF: big clock",
+    aboutTitle = "ABOUT",
+    versionLabel = { "Version $it" },
+    checkUpdates = "Check for updates",
+    checking = "Checking…",
+    upToDate = "You have the latest version.",
+    updateFailed = "Couldn't check right now. Are you online?",
+    updateAvailable = { "Version $it is available" },
+    updateNow = "Update now",
+    later = "Later",
+    whatsNew = "What's new",
+    autoCheckTitle = "Check for updates automatically",
+    autoCheckDesc = "Asks GitHub for a newer version when the app starts. Nothing else is sent.",
+    downloadingUpdate = "Downloading the update. The installer opens by itself.",
+    updateHintAndroid = "The new version downloads in your browser. Open it when it's done to install.",
+    website = "Website",
 )
 
 val GermanStrings = Strings(
@@ -466,6 +497,21 @@ val GermanStrings = Strings(
     copiedToClipboard = "Kopiert. Füge es dort ein, wo du es teilen möchtest.",
     keyboardTitle = "TASTATUR UND PRÄSENTER",
     keyboardDesc = "Leertaste: Pause oder weiter\n→, Bild ab oder Enter: nächster\n←, Bild auf oder Rücktaste: rückgängig\nF: große Uhr",
+    aboutTitle = "ÜBER DIE APP",
+    versionLabel = { "Version $it" },
+    checkUpdates = "Nach Updates suchen",
+    checking = "Wird geprüft …",
+    upToDate = "Du hast die neueste Version.",
+    updateFailed = "Konnte gerade nicht prüfen. Bist du online?",
+    updateAvailable = { "Version $it ist verfügbar" },
+    updateNow = "Jetzt aktualisieren",
+    later = "Später",
+    whatsNew = "Neu in dieser Version",
+    autoCheckTitle = "Automatisch nach Updates suchen",
+    autoCheckDesc = "Fragt beim Start bei GitHub nach einer neueren Version. Sonst wird nichts gesendet.",
+    downloadingUpdate = "Das Update wird geladen. Der Installer öffnet sich von selbst.",
+    updateHintAndroid = "Die neue Version wird im Browser geladen. Öffne sie danach, um sie zu installieren.",
+    website = "Webseite",
 )
 
 val NorwegianStrings = Strings(
@@ -615,6 +661,21 @@ val NorwegianStrings = Strings(
     copiedToClipboard = "Kopiert. Lim det inn der du vil dele det.",
     keyboardTitle = "TASTATUR OG PRESENTASJONSKLIKKER",
     keyboardDesc = "Mellomrom: pause eller fortsett\n→, Page Down eller Enter: neste\n←, Page Up eller Backspace: angre neste\nF: stor klokke",
+    aboutTitle = "OM APPEN",
+    versionLabel = { "Versjon $it" },
+    checkUpdates = "Se etter oppdateringer",
+    checking = "Sjekker …",
+    upToDate = "Du har nyeste versjon.",
+    updateFailed = "Fikk ikke sjekket nå. Er du på nett?",
+    updateAvailable = { "Versjon $it er tilgjengelig" },
+    updateNow = "Oppdater nå",
+    later = "Senere",
+    whatsNew = "Nytt i denne versjonen",
+    autoCheckTitle = "Se etter oppdateringer automatisk",
+    autoCheckDesc = "Spør GitHub om en nyere versjon når appen starter. Ingenting annet sendes.",
+    downloadingUpdate = "Laster ned oppdateringen. Installasjonen åpner seg av seg selv.",
+    updateHintAndroid = "Den nye versjonen lastes ned i nettleseren. Åpne den når den er ferdig for å installere.",
+    website = "Nettside",
 )
 
 /** "System default" picks German or Norwegian if the device uses it, otherwise English. */

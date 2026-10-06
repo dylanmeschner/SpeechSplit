@@ -13,6 +13,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
+import android.net.Uri
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.CompositionLocalProvider
@@ -21,8 +23,8 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.viewmodel.compose.viewModel
 import no.srrlsm.speechsplit.core.AppController
+import no.srrlsm.speechsplit.core.ReleaseInfo
 import no.srrlsm.speechsplit.core.ThemeMode
 import no.srrlsm.speechsplit.platform.AndroidPlatform
 import no.srrlsm.speechsplit.platform.AndroidStore
@@ -49,6 +51,7 @@ class TimerViewModel(application: Application) : AndroidViewModel(application) {
 }
 
 class MainActivity : ComponentActivity(), UiActions {
+    private val vm: TimerViewModel by viewModels()
     private var permissionCallback: ((Boolean) -> Unit)? = null
     private val notificationPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -60,7 +63,7 @@ class MainActivity : ComponentActivity(), UiActions {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         setContent {
-            val app = viewModel<TimerViewModel>().app
+            val app = vm.app
             val dark = when (app.settings.themeMode) {
                 ThemeMode.SYSTEM -> isSystemInDarkTheme()
                 ThemeMode.LIGHT -> false
@@ -123,6 +126,20 @@ class MainActivity : ComponentActivity(), UiActions {
             // Already granted, or blocked by the user in system settings
             onResult(hasNotificationPermission())
         }
+    }
+
+    override fun openUrl(url: String) {
+        try {
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+        } catch (e: Exception) {
+            // No browser installed: nothing sensible to do
+        }
+    }
+
+    /** The APK downloads in the browser; tapping the finished download installs it over this version. */
+    override fun installUpdate(release: ReleaseInfo) {
+        openUrl(release.androidUrl ?: release.pageUrl)
+        toast(vm.app.strings.updateHintAndroid)
     }
 
     override fun openDndSettings() {

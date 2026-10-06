@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import no.srrlsm.speechsplit.core.AppSettings
 import no.srrlsm.speechsplit.core.EnglishStrings
+import no.srrlsm.speechsplit.core.ReleaseInfo
 import no.srrlsm.speechsplit.core.Strings
 import no.srrlsm.speechsplit.core.TimeStatus
 import no.srrlsm.speechsplit.core.formatDiff
@@ -53,6 +54,10 @@ interface UiActions {
     fun hasNotificationPermission(): Boolean
     fun requestNotificationPermission(onResult: (Boolean) -> Unit)
     fun openDndSettings()
+    /** Opens a web page in the browser. */
+    fun openUrl(url: String)
+    /** Gets the new version the easiest way this platform allows. */
+    fun installUpdate(release: ReleaseInfo)
 }
 
 val LocalUiActions = staticCompositionLocalOf<UiActions> { error("UiActions not provided") }

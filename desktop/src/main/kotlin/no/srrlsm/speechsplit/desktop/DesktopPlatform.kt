@@ -3,6 +3,8 @@ package no.srrlsm.speechsplit.desktop
 import no.srrlsm.speechsplit.core.AppSettings
 import no.srrlsm.speechsplit.core.AppStore
 import no.srrlsm.speechsplit.core.PlatformServices
+import no.srrlsm.speechsplit.core.ReleaseInfo
+import no.srrlsm.speechsplit.jvm.UpdateClient
 import no.srrlsm.speechsplit.core.PracticeRun
 import no.srrlsm.speechsplit.core.SpeechPlan
 import no.srrlsm.speechsplit.core.Strings
@@ -84,6 +86,11 @@ class DesktopStore(private val dir: File = appDataDir()) : AppStore {
 /** Desktop device features. A PC has no vibration, watch link or Do Not Disturb API we can use. */
 class DesktopPlatform : PlatformServices {
     override val systemLanguage: String get() = Locale.getDefault().language
+
+    /** Set by the build (see desktop/build.gradle.kts). "dev" when run from the code. */
+    override val appVersion: String = System.getProperty("speechsplit.version") ?: "dev"
+
+    override suspend fun fetchLatestRelease(): ReleaseInfo? = UpdateClient.fetchLatest()
     override fun monotonicMs(): Long = System.nanoTime() / 1_000_000
     override fun epochMs(): Long = System.currentTimeMillis()
     override fun formatDateTime(epochMs: Long): String =

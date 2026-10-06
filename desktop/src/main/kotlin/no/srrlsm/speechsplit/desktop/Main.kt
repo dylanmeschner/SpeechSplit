@@ -46,6 +46,10 @@ import java.awt.Toolkit
 import java.awt.datatransfer.StringSelection
 import java.awt.event.KeyEvent as AwtKeyEvent
 import javax.imageio.ImageIO
+import javax.swing.SwingUtilities
+import java.io.File
+import java.net.URI
+import no.srrlsm.speechsplit.core.ReleaseInfo
 
 // ============================================================================
 // SPEECH SPLIT FOR WINDOWS (and Mac/Linux)
@@ -54,7 +58,16 @@ import javax.imageio.ImageIO
 fun main() = application {
     val scope = rememberCoroutineScope()
     val app = remember { AppController(DesktopStore(), DesktopPlatform(), scope) }
-    val ui = remember { DesktopUi(copiedText = { app.strings.copiedToClipboard }) }
+    val ui = remember {
+        DesktopUi(
+            copiedText = { app.strings.copiedToClipboard },
+            downloadingText = { app.strings.downloadingUpdate },
+            quit = {
+                app.dispose()
+                exitApplication()
+            },
+        )
+    }
     val keys = remember { KeyHandler(app) }
     val windowState = rememberWindowState(
         width = 440.dp,
@@ -128,7 +141,11 @@ private class KeyHandler(private val app: AppController) {
 }
 
 /** Desktop versions of the things the screens ask the device for. */
-private class DesktopUi(private val copiedText: () -> String) : UiActions {
+private class DesktopUi(
+    private val copiedText: () -> String,
+    private val downloadingText: () -> String,
+    private val quit: () -> Unit,
+) : UiActions {
     var toastMessage by mutableStateOf<String?>(null)
     var toastId by mutableStateOf(0)
 
@@ -147,6 +164,34 @@ private class DesktopUi(private val copiedText: () -> String) : UiActions {
     override fun hasNotificationPermission(): Boolean = false
     override fun requestNotificationPermission(onResult: (Boolean) -> Unit) = onResult(false)
     override fun openDndSettings() {}
+
+    override fun openUrl(url: String) {
+        runCatching { java.awt.Desktop.getDesktop().browse(URI(url)) }
+    }
+
+    /**
+     * Windows: downloads the new installer, starts it and closes the app, so the installer can
+     * replace it. Speeches and history are kept. Other systems: opens the download page.
+     */
+    override fun installUpdate(release: ReleaseInfo) {
+        val msi = release.windowsUrl
+        if (!isWindows || msi == null) {
+            openUrl(release.pageUrl)
+            return
+        }
+        toast(downloadingText())
+        Thread {
+            try {
+                val file = File(System.getProperty("java.io.tmpdir"), "SpeechSplit-Setup-${release.version}.msi")
+                URI(msi).toURL().openStream().use { input -> file.outputStream().use { input.copyTo(it) } }
+                ProcessBuilder("msiexec", "/i", file.absolutePath).start()
+                SwingUtilities.invokeLater { quit() }
+            } catch (e: Exception) {
+                // Download failed: let the browser handle it instead
+                SwingUtilities.invokeLater { openUrl(msi) }
+            }
+        }.start()
+    }
 }
 
 /** A small message at the bottom of the window that disappears after a few seconds. */
