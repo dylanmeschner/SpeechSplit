@@ -1,0 +1,63 @@
+# Builds the Windows installer (SpeechSplit-Setup.msi) on GitHub's Windows computers.
+#
+# How to use: on GitHub, go to Releases → "Draft a new release", create a tag like v2.0,
+# and press Publish. About 10 minutes later the installer is attached to that release,
+# and the download page links to it automatically.
+# You can also run it by hand under Actions → "Windows release" → "Run workflow".
+ 
+name: Windows release
+ 
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+ 
+permissions:
+  contents: write
+ 
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+ 
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+ 
+      - uses: gradle/actions/setup-gradle@v4
+ 
+      - name: Work out the version
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            # Tag "v2.1" -> version "2.1"
+            echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+          else
+            echo "VERSION=$(grep '^speechSplitVersion=' gradle.properties | cut -d= -f2)" >> "$GITHUB_ENV"
+          fi
+ 
+      - name: Build the installer
+        shell: bash
+        run: ./gradlew.bat :desktop:packageMsi "-PspeechSplitVersion=$VERSION" --no-configuration-cache
+ 
+      - name: Give it a fixed name (so the download link never changes)
+        shell: bash
+        run: |
+          mkdir dist
+          cp desktop/build/compose/binaries/main/msi/*.msi dist/SpeechSplit-Setup.msi
+          ls -la dist
+ 
+      - name: Keep a copy on the workflow run
+        uses: actions/upload-artifact@v4
+        with:
+          name: SpeechSplit-Windows
+          path: dist/SpeechSplit-Setup.msi
+ 
+      - name: Attach to the release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/SpeechSplit-Setup.msi
+ 
