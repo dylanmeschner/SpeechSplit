@@ -50,11 +50,24 @@ import javax.swing.SwingUtilities
 import java.io.File
 import java.net.URI
 import no.srrlsm.speechsplit.core.ReleaseInfo
+import no.srrlsm.speechsplit.jvm.DocumentReader
+import no.srrlsm.speechsplit.ui.urlEncode
+import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.draganddrop.DragAndDropEvent
+import androidx.compose.ui.draganddrop.DragAndDropTarget
+import androidx.compose.ui.draganddrop.awtTransferable
+import androidx.compose.foundation.draganddrop.dragAndDropTarget
+import java.awt.FileDialog
+import java.awt.Frame
+import java.awt.datatransfer.DataFlavor
+
+private val DOC_EXTENSIONS = setOf("pdf", "docx", "odt", "txt", "md", "rtf", "text", "markdown")
 
 // ============================================================================
 // SPEECH SPLIT FOR WINDOWS (and Mac/Linux)
 // The same app logic (core/) and screens (ui/) as the Android app, in a desktop window.
 // ============================================================================
+@OptIn(ExperimentalComposeUiApi::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 fun main() = application {
     val scope = rememberCoroutineScope()
     val app = remember { AppController(DesktopStore(), DesktopPlatform(), scope) }
@@ -62,6 +75,9 @@ fun main() = application {
         DesktopUi(
             copiedText = { app.strings.copiedToClipboard },
             downloadingText = { app.strings.downloadingUpdate },
+            pickTitle = { app.strings.importFromFile },
+            noEmailText = { app.strings.noEmailApp(it) },
+            openFile = { file -> importFile(app, file) },
             quit = {
                 app.dispose()
                 exitApplication()
@@ -105,7 +121,36 @@ fun main() = application {
 
         SpeechSplitTheme(darkTheme = dark) {
             CompositionLocalProvider(LocalUiActions provides ui) {
-                Box(Modifier.fillMaxSize()) {
+                // Drop a PDF, Word or text file anywhere on the window to import it
+                val dropTarget = remember {
+                    object : DragAndDropTarget {
+                        override fun onDrop(event: DragAndDropEvent): Boolean {
+                            val t = event.awtTransferable
+                            return try {
+                                when {
+                                    t.isDataFlavorSupported(DataFlavor.javaFileListFlavor) -> {
+                                        val files = t.getTransferData(DataFlavor.javaFileListFlavor) as List<*>
+                                        (files.firstOrNull() as? File)?.let { importFile(app, it) } != null
+                                    }
+                                    t.isDataFlavorSupported(DataFlavor.stringFlavor) -> {
+                                        val text = t.getTransferData(DataFlavor.stringFlavor) as String
+                                        if (!app.importText(text)) ui.toast(app.strings.importNothing)
+                                        true
+                                    }
+                                    else -> false
+                                }
+                            } catch (e: Exception) {
+                                false
+                            }
+                        }
+                    }
+                }
+                Box(
+                    Modifier.fillMaxSize().dragAndDropTarget(
+                        shouldStartDragAndDrop = { app.currentScreen != AppScreen.TIMER },
+                        target = dropTarget,
+                    )
+                ) {
                     SpeechSplitApp(app)
                     ToastHost(ui)
                 }
@@ -140,12 +185,49 @@ private class KeyHandler(private val app: AppController) {
     }
 }
 
+/** Reads a dropped or picked file and hands it to the shared import logic. */
+private fun importFile(app: AppController, file: File) {
+    if (!file.isFile || file.length() > DocumentReader.MAX_BYTES) {
+        app.importDocument(file.name, ByteArray(0))
+        return
+    }
+    val bytes = runCatching { file.readBytes() }.getOrNull() ?: return
+    app.importDocument(file.name, bytes)
+}
+
 /** Desktop versions of the things the screens ask the device for. */
 private class DesktopUi(
     private val copiedText: () -> String,
     private val downloadingText: () -> String,
+    private val pickTitle: () -> String,
+    private val noEmailText: (String) -> String,
+    private val openFile: (File) -> Unit,
     private val quit: () -> Unit,
 ) : UiActions {
+    override val canPickDocuments: Boolean = true
+
+    /** The system's own "Open" window, filtered to speech documents. */
+    override fun pickDocument() {
+        val dialog = FileDialog(null as Frame?, pickTitle(), FileDialog.LOAD).apply {
+            // Windows ignores filenameFilter, but uses this pattern
+            file = "*.pdf;*.docx;*.odt;*.txt;*.md;*.rtf"
+            setFilenameFilter { _, name -> name.substringAfterLast('.').lowercase() in DOC_EXTENSIONS }
+        }
+        dialog.isVisible = true // blocks until closed
+        val name = dialog.file ?: return
+        openFile(File(dialog.directory, name))
+    }
+
+    override fun sendEmail(to: String, subject: String, body: String) {
+        val uri = URI("mailto:$to?subject=${urlEncode(subject)}&body=${urlEncode(body)}")
+        val desktop = runCatching { java.awt.Desktop.getDesktop() }.getOrNull()
+        val ok = runCatching { desktop!!.mail(uri) }.isSuccess || runCatching { desktop!!.browse(uri) }.isSuccess
+        if (!ok) {
+            runCatching { Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(to), null) }
+            toast(noEmailText(to))
+        }
+    }
+
     var toastMessage by mutableStateOf<String?>(null)
     var toastId by mutableStateOf(0)
 

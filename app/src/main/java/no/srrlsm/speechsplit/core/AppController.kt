@@ -5,13 +5,15 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.math.abs
 
-enum class AppScreen { LIBRARY, SETTINGS, EDIT, READY, TIMER, HISTORY }
+enum class AppScreen { LIBRARY, ARCHIVE, SETTINGS, EDIT, READY, TIMER, HISTORY }
 
 /** A one-off signal for the UI (e.g. flash the screen edge). A new id means a new event. */
 data class AlertEvent(val id: Int, val status: TimeStatus)
@@ -29,11 +31,44 @@ class AppController(
     var currentScreen by mutableStateOf(AppScreen.LIBRARY)
         private set
 
+    /** All saved speeches, archived ones included, in the order they were added. */
     val speechPlans = mutableStateListOf<SpeechPlan>().apply { addAll(store.loadPlans()) }
 
     /** All saved practice runs, newest first. */
     var runs by mutableStateOf(store.loadRuns().sortedByDescending { it.finishedAtEpochMs })
         private set
+
+    init {
+        // Speeches saved before 2.2 have no dates. Give them dates that keep their old order,
+        // and take "last used" from their practice history.
+        if (speechPlans.any { it.createdAtEpochMs == 0L }) {
+            val now = platform.epochMs()
+            val lastRun = runs.groupBy { it.planId }.mapValues { (_, r) -> r.maxOf { it.finishedAtEpochMs } }
+            for (i in speechPlans.indices) {
+                val p = speechPlans[i]
+                if (p.createdAtEpochMs == 0L) {
+                    speechPlans[i] = p.copy(
+                        createdAtEpochMs = now - (speechPlans.size - i) * 1000L,
+                        lastUsedAtEpochMs = maxOf(p.lastUsedAtEpochMs, lastRun[p.id] ?: 0L),
+                    )
+                }
+            }
+            store.savePlans(speechPlans)
+        }
+    }
+
+    /** The speech list as shown: not archived, in the order chosen in [AppSettings.speechSort]. */
+    val visiblePlans: List<SpeechPlan>
+        get() = sortPlans(speechPlans.filterNot { it.archived })
+
+    val archivedPlans: List<SpeechPlan>
+        get() = sortPlans(speechPlans.filter { it.archived })
+
+    private fun sortPlans(plans: List<SpeechPlan>): List<SpeechPlan> = when (settings.speechSort) {
+        SpeechSort.LAST_USED -> plans.sortedByDescending { it.recentActivityEpochMs }
+        SpeechSort.CREATED -> plans.sortedByDescending { it.createdAtEpochMs }
+        SpeechSort.NAME -> plans.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.title.trim() })
+    }
 
     /** The plan currently being edited, prepared or timed. */
     var activePlan by mutableStateOf<SpeechPlan?>(null)
@@ -90,6 +125,8 @@ class AppController(
     val hasUnsavedEdits: Boolean
         get() = currentScreen == AppScreen.EDIT && activePlan != editOriginal
 
+    fun setSort(sort: SpeechSort) = updateSettings { it.copy(speechSort = sort) }
+
     fun createNewPlan() {
         startEditing(
             SpeechPlan(
@@ -138,6 +175,12 @@ class AppController(
         currentScreen = AppScreen.LIBRARY
     }
 
+    fun openArchive() {
+        activePlan = null
+        isQuickTimer = false
+        currentScreen = AppScreen.ARCHIVE
+    }
+
     fun openSettings() {
         activePlan = null
         isQuickTimer = false
@@ -176,7 +219,10 @@ class AppController(
 
     fun saveActivePlan() {
         val plan = activePlan ?: return
-        val cleaned = plan.copy(title = plan.title.trim().ifBlank { strings.untitledSpeech })
+        val cleaned = plan.copy(
+            title = plan.title.trim().ifBlank { strings.untitledSpeech },
+            createdAtEpochMs = plan.createdAtEpochMs.takeIf { it > 0 } ?: platform.epochMs(),
+        )
         val i = speechPlans.indexOfFirst { it.id == cleaned.id }
         if (i >= 0) speechPlans[i] = cleaned else speechPlans.add(cleaned)
         store.savePlans(speechPlans)
@@ -191,15 +237,114 @@ class AppController(
         clearHistory(plan.id)
     }
 
+    /** Hides a speech from the list. Its history is kept, and it can be restored from the archive. */
+    fun archivePlan(plan: SpeechPlan) = replacePlan(plan.id) { it.copy(archived = true) }
+
+    fun restorePlan(plan: SpeechPlan) = replacePlan(plan.id) { it.copy(archived = false) }
+
+    private fun replacePlan(id: String, transform: (SpeechPlan) -> SpeechPlan) {
+        val i = speechPlans.indexOfFirst { it.id == id }
+        if (i < 0) return
+        speechPlans[i] = transform(speechPlans[i])
+        store.savePlans(speechPlans)
+        if (activePlan?.id == id && currentScreen != AppScreen.EDIT) activePlan = speechPlans[i]
+    }
+
     fun exportPlan(plan: SpeechPlan): String = store.exportPlan(plan)
 
+    /** Imports a speech exported from Speech Split (any version, any platform). */
     fun importPlan(text: String): Boolean {
         val plan = store.importPlan(text, strings.importedSpeech) ?: return false
         if (plan.segments.isEmpty()) return false
         // Fresh ids, so importing the same speech twice gives two independent copies
-        speechPlans.add(plan.copy(id = newId(), segments = plan.segments.map { it.copy(id = newId()) }))
+        speechPlans.add(
+            plan.copy(
+                id = newId(),
+                segments = plan.segments.map { it.copy(id = newId()) },
+                createdAtEpochMs = platform.epochMs(),
+                lastUsedAtEpochMs = 0L,
+                archived = false,
+            )
+        )
         store.savePlans(speechPlans)
         return true
+    }
+
+    // --- Importing a document (PDF, Word, text) ------------------------------------
+    /** A read document waiting for the user to look at the suggested segments. */
+    var importDraft by mutableStateOf<ImportDraft?>(null)
+        private set
+
+    /** True while a document is being read. */
+    var importBusy by mutableStateOf(false)
+        private set
+
+    fun dismissImportDraft() {
+        importDraft = null
+    }
+
+    /**
+     * Pasted text: an exported speech is imported as it is; any other text is treated as the
+     * speech itself, and segments are suggested. Returns false if there's nothing to work with.
+     */
+    fun importText(text: String): Boolean {
+        if (importPlan(text)) {
+            message = strings.imported
+            return true
+        }
+        val blocks = blocksFromPlainText(text)
+        if (blocks.none { !it.heading && countWords(it.text) > 0 }) return false
+        importDraft = ImportDraft(title = guessTitle(blocks, strings.importedSpeech), blocks = blocks)
+        return true
+    }
+
+    /** A file dropped on the app, picked, or shared to it. Reads it in the background. */
+    fun importDocument(fileName: String, bytes: ByteArray) {
+        if (importBusy) return
+        // A file exported from Speech Split is plain JSON: import it directly
+        val asText = bytes.takeIf { it.size < 1_000_000 }?.decodeToString()?.trim()
+        if (asText != null && asText.startsWith("{") && importPlan(asText)) {
+            message = strings.imported
+            return
+        }
+        importBusy = true
+        scope.launch {
+            val blocks = try {
+                withContext(Dispatchers.Default) { platform.readDocument(fileName, bytes) }
+            } catch (e: Throwable) {
+                emptyList()
+            }
+            importBusy = false
+            when {
+                blocks == null -> message = strings.importUnsupported
+                blocks.none { !it.heading && countWords(it.text) > 0 } -> message = strings.importUnreadable
+                else -> {
+                    val fromName = fileName.substringBeforeLast('.').replace('_', ' ').trim()
+                    importDraft = ImportDraft(title = guessTitle(blocks, fromName.ifBlank { strings.importedSpeech }), blocks = blocks)
+                }
+            }
+        }
+    }
+
+    /** A first heading followed straight by another heading is the document's title. */
+    private fun guessTitle(blocks: List<DocBlock>, fallback: String): String {
+        val first = blocks.getOrNull(0)
+        val second = blocks.getOrNull(1)
+        return if (first != null && first.heading && second != null && second.heading) first.text else fallback
+    }
+
+    /** The user accepted the suggestion: open it in the editor, where everything can still be changed. */
+    fun acceptImport(title: String, segments: List<SuggestedSegment>, wordsPerMinute: Int) {
+        if (segments.isEmpty()) return
+        importDraft = null
+        if (wordsPerMinute != settings.wordsPerMinute) updateSettings { it.copy(wordsPerMinute = wordsPerMinute) }
+        startEditing(
+            SpeechPlan(
+                title = title.trim().ifBlank { strings.importedSpeech },
+                segments = segments.map { SpeechSegment(title = it.title, targetSeconds = it.seconds) },
+            ),
+            returnTo = AppScreen.LIBRARY,
+        )
     }
 
     // --- History --------------------------------------------------------------
@@ -210,6 +355,7 @@ class AppController(
         store.saveRuns(runs)
     }
 
+    /** All runs of a speech that is deleted for good. */
     fun clearHistory(planId: String) {
         if (runs.none { it.planId == planId }) return
         runs = runs.filterNot { it.planId == planId }
@@ -231,12 +377,26 @@ class AppController(
         )
     }
 
+    /** Id of the run saved when FINISH was pressed, so an "undo" can take it back out. */
+    private var recordedRunId: String? = null
+
+    /**
+     * Saved the moment FINISH is pressed (before, it was only saved when leaving the timer,
+     * so closing the app on the finished screen lost the run).
+     */
     private fun recordRun() {
-        if (isQuickTimer || !engine.isFinished) return
+        if (isQuickTimer || !engine.isFinished || recordedRunId != null) return
         val run = currentRunSnapshot() ?: return
+        recordedRunId = run.id
         val forPlan = (listOf(run) + runsFor(run.planId)).take(MaxRunsPerPlan)
         runs = (forPlan + runs.filterNot { it.planId == run.planId }).sortedByDescending { it.finishedAtEpochMs }
         store.saveRuns(runs)
+    }
+
+    private fun unrecordRun() {
+        val id = recordedRunId ?: return
+        recordedRunId = null
+        deleteRun(id)
     }
 
     // --- Timer ----------------------------------------------------------------
@@ -273,6 +433,11 @@ class AppController(
         alerted.clear()
         celebrating = false
         dndWarned = false
+        recordedRunId = null
+        if (!isQuickTimer) {
+            // For "last used" sorting
+            replacePlan(plan.id) { it.copy(lastUsedAtEpochMs = platform.epochMs()) }
+        }
         engine.start(plan.segments.size)
         currentScreen = AppScreen.TIMER
         afterChange()
@@ -295,20 +460,26 @@ class AppController(
     }
 
     fun nextSegment() {
-        if (engine.next()) celebrating = isPerfectFinish()
+        if (engine.next()) {
+            celebrating = isPerfectFinish()
+            recordRun()
+        }
         afterChange()
     }
 
     /** Undo an accidental NEXT (or FINISH). */
     fun previousSegment() {
+        if (!engine.isActive) return
         celebrating = false
+        if (engine.isFinished) unrecordRun()
         engine.previous()
         afterChange()
     }
 
-    /** Leaves the timer. A finished run is saved to the history first. */
+    /** Leaves the timer. A finished run is already in the history. */
     fun stopTimer() {
         recordRun()
+        recordedRunId = null
         engine.stop()
         celebrating = false
         afterChange()
@@ -340,6 +511,32 @@ class AppController(
                 else -> UpdateState.UpToDate
             }
         }
+    }
+
+    var notesState by mutableStateOf<NotesState>(NotesState.Idle)
+        private set
+
+    /** Loads the patch notes of the latest releases from GitHub (once per session, unless it failed). */
+    fun loadReleaseNotes() {
+        if (notesState == NotesState.Loading || notesState is NotesState.Loaded) return
+        notesState = NotesState.Loading
+        scope.launch {
+            val list = platform.fetchReleases()
+            notesState = if (list == null) NotesState.Failed else NotesState.Loaded(list)
+        }
+    }
+
+    /** The feedback email: who it goes to, its subject and a short template with the version. */
+    fun feedbackMail(kind: FeedbackKind): Triple<String, String, String> {
+        val s = strings
+        val label = when (kind) {
+            FeedbackKind.BUG -> s.feedbackBug
+            FeedbackKind.IDEA -> s.feedbackIdea
+            FeedbackKind.OTHER -> s.feedbackOther
+        }
+        val subject = "Speech Split: $label"
+        val body = "${s.feedbackDescribe}\n\n\n\n---\nSpeech Split $appVersion · ${platform.platformName}"
+        return Triple(FEEDBACK_EMAIL, subject, body)
     }
 
     /** Call when the app is closed for good. */

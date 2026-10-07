@@ -125,5 +125,14 @@ fun main(args: Array<String>) {
         shot("6-settings") { app, _ -> app.openSettings() }
         shot("7-update-banner", newer = true) { _, _ -> }
         shot("8-about", height = 4400, newer = true) { app, _ -> app.openSettings() }
+        shot("9-library-archive") { app, _ -> app.archivePlan(app.speechPlans[1]) }
+        shot("10-import") { app, _ ->
+            app.importText(
+                "Sunday talk\n\nIntroduction\nGood morning everyone, and thank you for coming. Today I want to talk about patience.\n\n" +
+                    "Main point\n" + "Patience is more than waiting. It is how we act while we wait. ".repeat(40) + "\n\n" +
+                    "Story\n" + "Let me tell you about my grandfather and his garden. ".repeat(30) + "\n\n" +
+                    "Conclusion\nSo this week, try to notice one moment where you can choose patience. Thank you."
+            )
+        }
     }
 }

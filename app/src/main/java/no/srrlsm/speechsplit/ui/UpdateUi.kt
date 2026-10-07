@@ -19,7 +19,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.ui.graphics.vector.ImageVector
 import no.srrlsm.speechsplit.core.AppController
+import no.srrlsm.speechsplit.core.FeedbackKind
+import no.srrlsm.speechsplit.core.NotesState
+import no.srrlsm.speechsplit.core.PRIVACY_URL
+import no.srrlsm.speechsplit.core.RELEASES_URL
 import no.srrlsm.speechsplit.core.ReleaseInfo
 import no.srrlsm.speechsplit.core.UpdateState
 import no.srrlsm.speechsplit.core.WEBSITE_URL
@@ -104,7 +110,7 @@ fun UpdateDialog(app: AppController, release: ReleaseInfo, onDismiss: () -> Unit
     )
 }
 
-/** Version number, update check and website link, at the bottom of Settings. */
+/** Version number, update check, patch notes, feedback and links, at the bottom of Settings. */
 @Composable
 fun AboutContent(app: AppController) {
     val s = LocalStrings.current
@@ -112,13 +118,12 @@ fun AboutContent(app: AppController) {
     val c = AppTheme.colors
     val state = app.updateState
     var showDialog by remember { mutableStateOf(false) }
+    var showNotes by remember { mutableStateOf(false) }
+    var showFeedback by remember { mutableStateOf(false) }
 
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f)) {
-            Text("Speech Split", fontSize = 16.sp, fontWeight = FontWeight.Bold)
-            Text(s.versionLabel(app.appVersion), fontSize = 14.sp, color = c.textSub)
-        }
-        TextButton(onClick = { ui.openUrl(WEBSITE_URL) }) { Text(s.website, color = c.textMain) }
+    Column {
+        Text("Speech Split", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        Text(s.versionLabel(app.appVersion), fontSize = 14.sp, color = c.textSub)
     }
     Spacer(Modifier.height(12.dp))
 
@@ -162,7 +167,122 @@ fun AboutContent(app: AppController) {
         app.updateSettings { it.copy(autoUpdateCheck = v) }
     }
 
+    HorizontalDivider(Modifier.padding(top = 14.dp, bottom = 4.dp))
+    LinkRow(Icons.Default.NewReleases, s.patchNotes) { showNotes = true }
+    LinkRow(Icons.Default.Feedback, s.feedback) { showFeedback = true }
+    LinkRow(Icons.Default.Language, s.website, external = true) { ui.openUrl(WEBSITE_URL) }
+    LinkRow(Icons.Default.Code, s.viewOnGitHub, external = true) { ui.openUrl(RELEASES_URL) }
+    LinkRow(Icons.Default.Shield, s.privacy, external = true) { ui.openUrl(PRIVACY_URL) }
+    Spacer(Modifier.height(10.dp))
+    Text(s.madeBy, fontSize = 13.sp, color = c.textSub)
+
     if (showDialog && state is UpdateState.Available) {
         UpdateDialog(app, state.release, onDismiss = { showDialog = false })
     }
+    if (showNotes) PatchNotesDialog(app, onDismiss = { showNotes = false })
+    if (showFeedback) FeedbackDialog(app, onDismiss = { showFeedback = false })
+}
+
+@Composable
+private fun LinkRow(icon: ImageVector, text: String, external: Boolean = false, onClick: () -> Unit) {
+    val c = AppTheme.colors
+    Surface(onClick = onClick, color = androidx.compose.ui.graphics.Color.Transparent, shape = RoundedCornerShape(10.dp)) {
+        Row(Modifier.fillMaxWidth().padding(vertical = 12.dp, horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(icon, contentDescription = null, tint = c.textSub, modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(14.dp))
+            Text(text, fontSize = 16.sp, modifier = Modifier.weight(1f))
+            Icon(
+                if (external) Icons.AutoMirrored.Filled.OpenInNew else Icons.Default.ChevronRight,
+                contentDescription = null,
+                tint = c.textSub,
+                modifier = Modifier.size(18.dp),
+            )
+        }
+    }
+}
+
+/** The notes of the latest releases, straight from GitHub, so they never need updating in the app. */
+@Composable
+fun PatchNotesDialog(app: AppController, onDismiss: () -> Unit) {
+    val s = LocalStrings.current
+    val ui = LocalUiActions.current
+    val c = AppTheme.colors
+    LaunchedEffect(Unit) { app.loadReleaseNotes() }
+    val state = app.notesState
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = { Icon(Icons.Default.NewReleases, contentDescription = null) },
+        title = { Text(s.patchNotes) },
+        text = {
+            Column(Modifier.heightIn(max = 460.dp).verticalScroll(rememberScrollState())) {
+                when (state) {
+                    NotesState.Idle, NotesState.Loading -> Row(verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(10.dp))
+                        Text(s.notesLoading, color = c.textSub)
+                    }
+                    NotesState.Failed -> Text(s.notesFailed, color = c.textSub)
+                    is NotesState.Loaded -> state.releases.forEachIndexed { i, release ->
+                        if (i > 0) HorizontalDivider(Modifier.padding(vertical = 12.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(s.versionLabel(release.version), fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            if (release.version == app.appVersion) {
+                                Spacer(Modifier.width(8.dp))
+                                Surface(color = c.surfaceHigh, shape = RoundedCornerShape(50)) {
+                                    Text(s.yourVersion, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
+                                }
+                            }
+                        }
+                        if (release.date.isNotBlank()) Text(release.date, fontSize = 12.sp, color = c.textSub)
+                        Spacer(Modifier.height(6.dp))
+                        Text(plainReleaseNotes(release.notes).ifBlank { s.noNotes }, fontSize = 14.sp)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { ui.openUrl(RELEASES_URL) }) { Text(s.viewOnGitHub, color = c.textMain) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(s.close, color = c.textMain) }
+        },
+    )
+}
+
+/** Bug, idea or something else: opens the email app with a short template (incl. version). */
+@Composable
+fun FeedbackDialog(app: AppController, onDismiss: () -> Unit) {
+    val s = LocalStrings.current
+    val ui = LocalUiActions.current
+    val c = AppTheme.colors
+    fun send(kind: FeedbackKind) {
+        val (to, subject, body) = app.feedbackMail(kind)
+        onDismiss()
+        ui.sendEmail(to, subject, body)
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = { Icon(Icons.Default.Feedback, contentDescription = null) },
+        title = { Text(s.feedback) },
+        text = {
+            Column {
+                Text(s.feedbackText, fontSize = 14.sp, color = c.textSub)
+                Spacer(Modifier.height(12.dp))
+                listOf(
+                    Triple(FeedbackKind.BUG, Icons.Default.BugReport, s.feedbackBug),
+                    Triple(FeedbackKind.IDEA, Icons.Default.Lightbulb, s.feedbackIdea),
+                    Triple(FeedbackKind.OTHER, Icons.Default.ChatBubbleOutline, s.feedbackOther),
+                ).forEach { (kind, icon, label) ->
+                    OutlinedButton(onClick = { send(kind) }, modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
+                        Icon(icon, contentDescription = null, tint = c.textMain, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(10.dp))
+                        Text(label, color = c.textMain, modifier = Modifier.weight(1f))
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = { TextButton(onClick = onDismiss) { Text(s.cancel, color = c.textMain) } },
+    )
 }

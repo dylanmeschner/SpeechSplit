@@ -29,9 +29,21 @@ data class SpeechPlan(
     val id: String = newId(),
     val title: String = "",
     val segments: List<SpeechSegment> = emptyList(),
+    /** When the speech was first saved (0 = unknown, older saves). */
+    val createdAtEpochMs: Long = 0L,
+    /** When the timer was last started for this speech (0 = never). */
+    val lastUsedAtEpochMs: Long = 0L,
+    /** Archived speeches are hidden from the list, but kept with their history and can be restored. */
+    val archived: Boolean = false,
 ) {
     val totalTargetSeconds: Int get() = segments.sumOf { it.targetSeconds }
+
+    /** For "last used" sorting: a new speech counts as used when it was created. */
+    val recentActivityEpochMs: Long get() = maxOf(lastUsedAtEpochMs, createdAtEpochMs)
 }
+
+/** How the speech list is sorted. */
+enum class SpeechSort { LAST_USED, CREATED, NAME }
 
 /** One segment of a finished practice run. Title and target are copied, so old runs still read right after the plan is edited. */
 data class RunSegment(
@@ -84,11 +96,16 @@ data class AppSettings(
     val lecternMode: Boolean = false,
     /** Ask GitHub for a newer version when the app starts. */
     val autoUpdateCheck: Boolean = true,
+    /** Order of the speech list. */
+    val speechSort: SpeechSort = SpeechSort.LAST_USED,
+    /** Speaking pace used when suggesting times for an imported document. */
+    val wordsPerMinute: Int = 130,
 )
 
 val WarningOptions = listOf(0, 5, 10, 15, 20)
 val CelebrateOptions = listOf(-1, 0, 2, 5)
 val QuickTimerOptions = listOf(5, 10, 15, 20, 30, 45)
+val PaceOptions = listOf(110, 130, 150)
 
 enum class TimeStatus { ON_TRACK, WARNING, OVER }
 

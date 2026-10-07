@@ -28,6 +28,18 @@ interface PlatformServices {
     /** Asks GitHub for the newest release. Null if offline or GitHub can't be reached. */
     suspend fun fetchLatestRelease(): ReleaseInfo? = null
 
+    /** The latest releases with their notes, newest first (for "Patch notes"). Null if offline. */
+    suspend fun fetchReleases(): List<ReleaseInfo>? = null
+
+    /** e.g. "Android 15" or "Windows 11", for the feedback email. */
+    val platformName: String get() = "unknown"
+
+    /**
+     * Reads a speech document (PDF, Word, OpenDocument, text). Empty if it has no readable text,
+     * null if the file type isn't supported. Called off the main thread.
+     */
+    fun readDocument(fileName: String, bytes: ByteArray): List<DocBlock>? = null
+
     /** Two-letter language code of the device, e.g. "nb", "de", "en". */
     val systemLanguage: String
 

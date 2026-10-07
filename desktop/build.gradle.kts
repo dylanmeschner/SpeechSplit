@@ -37,6 +37,8 @@ dependencies {
     implementation(libs.compose.material.icons.extended.desktop)
     implementation(libs.kotlinx.coroutines.swing)
     implementation(libs.json)
+    // Reads the text of PDF speeches for "import a document"
+    implementation("org.apache.pdfbox:pdfbox:3.0.5")
 }
 
 compose.desktop {
@@ -56,9 +58,9 @@ compose.desktop {
             // Installers need three numbers: "2.0" becomes "2.0.0"
             packageVersion = appVersion.split(".").let { (it + listOf("0", "0")).take(3) }.joinToString(".")
             description = "Speech timer with segments"
-            vendor = "SRRLSM"
-            copyright = "© 2026 SRRLSM"
-            modules("java.naming", "java.instrument", "jdk.unsupported")
+            vendor = "Dylan Scott Meschner"
+            copyright = "© 2026 Dylan Scott Meschner"
+            modules("java.naming", "java.instrument", "jdk.unsupported", "java.logging")
 
             windows {
                 iconFile.set(project.file("icons/icon.ico"))

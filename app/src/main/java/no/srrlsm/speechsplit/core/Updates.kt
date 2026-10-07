@@ -8,6 +8,10 @@ package no.srrlsm.speechsplit.core
 
 const val GITHUB_REPO = "dylanmeschner/SpeechSplit"
 const val WEBSITE_URL = "https://dylanmeschner.github.io/SpeechSplit/"
+const val WEB_APP_URL = WEBSITE_URL + "app/"
+const val PRIVACY_URL = WEBSITE_URL + "privacy.html"
+const val RELEASES_URL = "https://github.com/$GITHUB_REPO/releases"
+const val FEEDBACK_EMAIL = "dylan123@live.no"
 
 /** The newest release on GitHub. Download links are null if that file isn't attached. */
 data class ReleaseInfo(
@@ -16,7 +20,19 @@ data class ReleaseInfo(
     val pageUrl: String,
     val windowsUrl: String?,
     val androidUrl: String?,
+    /** "2026-10-06", or empty if unknown. */
+    val date: String = "",
 )
+
+enum class FeedbackKind { BUG, IDEA, OTHER }
+
+/** Loading state of the "Patch notes" list. */
+sealed interface NotesState {
+    data object Idle : NotesState
+    data object Loading : NotesState
+    data object Failed : NotesState
+    data class Loaded(val releases: List<ReleaseInfo>) : NotesState
+}
 
 sealed interface UpdateState {
     data object Idle : UpdateState

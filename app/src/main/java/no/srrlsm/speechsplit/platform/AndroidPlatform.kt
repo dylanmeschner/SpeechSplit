@@ -15,7 +15,12 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import no.srrlsm.speechsplit.MainActivity
 import no.srrlsm.speechsplit.R
+import com.tom_roush.pdfbox.android.PDFBoxResourceLoader
+import com.tom_roush.pdfbox.pdmodel.PDDocument
+import com.tom_roush.pdfbox.text.PDFTextStripper
+import no.srrlsm.speechsplit.core.DocBlock
 import no.srrlsm.speechsplit.core.PlatformServices
+import no.srrlsm.speechsplit.jvm.DocumentReader
 import no.srrlsm.speechsplit.core.ReleaseInfo
 import no.srrlsm.speechsplit.jvm.UpdateClient
 import no.srrlsm.speechsplit.core.Strings
@@ -32,6 +37,8 @@ class AndroidPlatform(context: Context) : PlatformServices {
 
     override val systemLanguage: String get() = Locale.getDefault().language
 
+    override val platformName: String get() = "Android ${Build.VERSION.RELEASE} · ${Build.MANUFACTURER} ${Build.MODEL}"
+
     override val appVersion: String =
         try {
             @Suppress("DEPRECATION")
@@ -41,6 +48,28 @@ class AndroidPlatform(context: Context) : PlatformServices {
         }
 
     override suspend fun fetchLatestRelease(): ReleaseInfo? = UpdateClient.fetchLatest()
+
+    override suspend fun fetchReleases(): List<ReleaseInfo>? = UpdateClient.fetchReleases()
+
+    // --- Reading speech documents ---------------------------------------------
+    private var pdfReady = false
+
+    override fun readDocument(fileName: String, bytes: ByteArray): List<DocBlock>? =
+        DocumentReader.read(fileName, bytes, pdfToText = ::pdfText)
+
+    /** Text of a PDF, with blank lines between paragraphs (PdfBox for Android). */
+    private fun pdfText(bytes: ByteArray): String {
+        if (!pdfReady) {
+            PDFBoxResourceLoader.init(app)
+            pdfReady = true
+        }
+        return PDDocument.load(bytes).use { doc ->
+            PDFTextStripper().apply {
+                sortByPosition = true
+                paragraphEnd = "\n\n"
+            }.getText(doc)
+        }
+    }
 
     override fun monotonicMs(): Long = SystemClock.elapsedRealtime()
 
@@ -147,14 +176,27 @@ class AndroidPlatform(context: Context) : PlatformServices {
             if (on) {
                 if (nm.currentInterruptionFilter == NotificationManager.INTERRUPTION_FILTER_ALL) {
                     nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_PRIORITY)
-                    prefs.edit().putBoolean(KEY_DND_BY_APP, true).apply()
+                    // commit(), not apply(): this must be on disk in case the app is killed right after
+                    prefs.edit().putBoolean(KEY_DND_BY_APP, true).commit()
+                    guard(true)
                 }
             } else if (prefs.getBoolean(KEY_DND_BY_APP, false)) {
                 nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_ALL)
-                prefs.edit().putBoolean(KEY_DND_BY_APP, false).apply()
+                prefs.edit().putBoolean(KEY_DND_BY_APP, false).commit()
+                guard(false)
             }
         } catch (e: SecurityException) {
             // Access was revoked in the meantime
+        }
+    }
+
+    /** Starts/stops [DndGuardService], which switches DND off if the app is swiped away mid-speech. */
+    private fun guard(on: Boolean) {
+        val intent = Intent(app, DndGuardService::class.java)
+        try {
+            if (on) app.startService(intent) else app.stopService(intent)
+        } catch (e: Exception) {
+            // Not allowed from the background: DND is still switched off the next time the app opens
         }
     }
 

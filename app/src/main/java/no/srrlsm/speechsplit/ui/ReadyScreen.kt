@@ -18,6 +18,7 @@ import no.srrlsm.speechsplit.core.AppController
 import no.srrlsm.speechsplit.core.summaryOf
 import no.srrlsm.speechsplit.ui.theme.AppTheme
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ReadyScreen(app: AppController) {
     val s = LocalStrings.current
@@ -87,7 +88,8 @@ fun ReadyScreen(app: AppController) {
                 }
 
                 Spacer(Modifier.height(if (shortPane) 8.dp else 16.dp))
-                Row(horizontalArrangement = Arrangement.Center) {
+                // Wraps onto two lines in a thin split-screen pane instead of pushing "Library" off the edge
+                FlowRow(horizontalArrangement = Arrangement.Center) {
                     TextButton(onClick = { app.editActivePlan() }) { Text(s.edit, color = c.textSub) }
                     TextButton(onClick = { app.openHistory() }) {
                         Text(if (runCount > 0) "${s.history} ($runCount)" else s.history, color = c.textSub)

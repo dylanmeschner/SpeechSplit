@@ -26,12 +26,18 @@ fun SpeechSplitApp(app: AppController) {
             // Keeps content clear of the status bar, nav bar, camera cutout and keyboard
             Box(Modifier.fillMaxSize().safeDrawingPadding()) {
                 when (app.currentScreen) {
-                    AppScreen.LIBRARY, AppScreen.SETTINGS -> HomeTabs(app)
+                    AppScreen.LIBRARY, AppScreen.ARCHIVE, AppScreen.SETTINGS -> HomeTabs(app)
                     AppScreen.EDIT -> EditScreen(app)
                     AppScreen.READY -> ReadyScreen(app)
                     AppScreen.TIMER -> TimerScreen(app)
                     AppScreen.HISTORY -> HistoryScreen(app)
                 }
+            }
+            // A document that was opened, dropped or shared: show the suggested segments.
+            // Not over a running timer or unsaved edits; it waits until the user leaves those.
+            val draft = app.importDraft
+            if (draft != null && app.currentScreen != AppScreen.TIMER && app.currentScreen != AppScreen.EDIT) {
+                ImportSuggestDialog(app, draft)
             }
         }
     }

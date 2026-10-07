@@ -58,6 +58,27 @@ interface UiActions {
     fun openUrl(url: String)
     /** Gets the new version the easiest way this platform allows. */
     fun installUpdate(release: ReleaseInfo)
+
+    /** Whether this platform can open a file picker for speech documents. */
+    val canPickDocuments: Boolean get() = false
+
+    /** Opens the file picker; the chosen file goes to AppController.importDocument. */
+    fun pickDocument() {}
+
+    /** Opens the email app with a ready-made message. */
+    fun sendEmail(to: String, subject: String, body: String) {
+        openUrl("mailto:$to?subject=${urlEncode(subject)}&body=${urlEncode(body)}")
+    }
+}
+
+/** Percent-encoding for mailto: links (spaces as %20, which every email app understands). */
+fun urlEncode(text: String): String = buildString {
+    for (b in text.encodeToByteArray()) {
+        val c = b.toInt() and 0xFF
+        val ch = c.toChar()
+        if (ch.isLetterOrDigit() && c < 128 || ch in "-_.~") append(ch)
+        else append('%').append("0123456789ABCDEF"[c shr 4]).append("0123456789ABCDEF"[c and 15])
+    }
 }
 
 val LocalUiActions = staticCompositionLocalOf<UiActions> { error("UiActions not provided") }

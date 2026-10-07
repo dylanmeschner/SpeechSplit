@@ -1,6 +1,10 @@
 package no.srrlsm.speechsplit.desktop
 
 import no.srrlsm.speechsplit.core.AppSettings
+import no.srrlsm.speechsplit.core.DocBlock
+import no.srrlsm.speechsplit.jvm.DocumentReader
+import org.apache.pdfbox.Loader
+import org.apache.pdfbox.text.PDFTextStripper
 import no.srrlsm.speechsplit.core.AppStore
 import no.srrlsm.speechsplit.core.PlatformServices
 import no.srrlsm.speechsplit.core.ReleaseInfo
@@ -91,6 +95,21 @@ class DesktopPlatform : PlatformServices {
     override val appVersion: String = System.getProperty("speechsplit.version") ?: "dev"
 
     override suspend fun fetchLatestRelease(): ReleaseInfo? = UpdateClient.fetchLatest()
+    override suspend fun fetchReleases(): List<ReleaseInfo>? = UpdateClient.fetchReleases()
+
+    override val platformName: String
+        get() = "${System.getProperty("os.name")} ${System.getProperty("os.version")}"
+
+    /** PDF text through Apache PDFBox; Word, OpenDocument and text through the shared reader. */
+    override fun readDocument(fileName: String, bytes: ByteArray): List<DocBlock>? =
+        DocumentReader.read(fileName, bytes) { pdf ->
+            Loader.loadPDF(pdf).use { doc ->
+                PDFTextStripper().apply {
+                    sortByPosition = true
+                    paragraphEnd = "\n\n"
+                }.getText(doc)
+            }
+        }
     override fun monotonicMs(): Long = System.nanoTime() / 1_000_000
     override fun epochMs(): Long = System.currentTimeMillis()
     override fun formatDateTime(epochMs: Long): String =

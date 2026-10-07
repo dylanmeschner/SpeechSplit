@@ -8,7 +8,9 @@ import no.srrlsm.speechsplit.core.PracticeRun
 import no.srrlsm.speechsplit.core.RunSegment
 import no.srrlsm.speechsplit.core.SpeechPlan
 import no.srrlsm.speechsplit.core.SpeechSegment
+import no.srrlsm.speechsplit.core.SpeechSort
 import no.srrlsm.speechsplit.core.ThemeMode
+import no.srrlsm.speechsplit.core.WarningOptions
 import no.srrlsm.speechsplit.core.newId
 import org.json.JSONArray
 import org.json.JSONObject
@@ -27,8 +29,14 @@ object JsonCodec {
         return (0 until segs.length()).all { segs.optJSONObject(it)?.has("id") == true }
     }
 
+    /** [includeIds] = the app's own save (ids, dates, archive). Without it: a clean, shareable export. */
     fun planToJson(plan: SpeechPlan, includeIds: Boolean): JSONObject = JSONObject().apply {
-        if (includeIds) put("id", plan.id)
+        if (includeIds) {
+            put("id", plan.id)
+            if (plan.createdAtEpochMs > 0) put("createdAt", plan.createdAtEpochMs)
+            if (plan.lastUsedAtEpochMs > 0) put("lastUsedAt", plan.lastUsedAtEpochMs)
+            if (plan.archived) put("archived", true)
+        }
         put("title", plan.title)
         put("segments", JSONArray().apply {
             plan.segments.forEach { seg ->
@@ -54,6 +62,9 @@ object JsonCodec {
             id = obj.optString("id").ifBlank { newId() },
             title = obj.optString("title").ifBlank { fallbackTitle },
             segments = segments,
+            createdAtEpochMs = obj.optLong("createdAt", 0L).coerceAtLeast(0L),
+            lastUsedAtEpochMs = obj.optLong("lastUsedAt", 0L).coerceAtLeast(0L),
+            archived = obj.optBoolean("archived", false),
         )
     }
 
@@ -133,6 +144,8 @@ object JsonCodec {
         .put("dndWhileSpeaking", s.dndWhileSpeaking)
         .put("lecternMode", s.lecternMode)
         .put("autoUpdateCheck", s.autoUpdateCheck)
+        .put("speechSort", s.speechSort.name)
+        .put("wordsPerMinute", s.wordsPerMinute)
         .toString(2)
 
     fun settingsFromJson(text: String): AppSettings {
@@ -142,7 +155,7 @@ object JsonCodec {
             language = enumOrDefault(o.optString("language"), d.language),
             themeMode = enumOrDefault(o.optString("themeMode"), d.themeMode),
             celebrateTolerance = o.optInt("celebrateTolerance", d.celebrateTolerance).let { if (it in CelebrateOptions) it else 0 },
-            warningPercent = o.optInt("warningPercent", d.warningPercent),
+            warningPercent = o.optInt("warningPercent", d.warningPercent).let { if (it in WarningOptions) it else d.warningPercent },
             clockMode = enumOrDefault(o.optString("clockMode"), d.clockMode),
             showAdjusted = o.optBoolean("showAdjusted", d.showAdjusted),
             flashAlerts = o.optBoolean("flashAlerts", d.flashAlerts),
@@ -152,6 +165,8 @@ object JsonCodec {
             dndWhileSpeaking = o.optBoolean("dndWhileSpeaking", d.dndWhileSpeaking),
             lecternMode = o.optBoolean("lecternMode", d.lecternMode),
             autoUpdateCheck = o.optBoolean("autoUpdateCheck", d.autoUpdateCheck),
+            speechSort = enumOrDefault(o.optString("speechSort"), d.speechSort),
+            wordsPerMinute = o.optInt("wordsPerMinute", d.wordsPerMinute).coerceIn(60, 250),
         )
     }
 }

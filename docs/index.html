@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Speech Split</title>
-<meta name="description" content="A speech timer that splits your talk into parts, so you always know if you're on time. For Windows and Android.">
+<meta name="description" content="A speech timer that splits your talk into parts, so you always know if you're on time. Free for Windows, Android and in the browser (iPad, Mac).">
 <meta property="og:title" content="Speech Split">
-<meta property="og:description" content="A speech timer that splits your talk into parts. Free for Windows and Android.">
+<meta property="og:description" content="A speech timer that splits your talk into parts. Free for Windows, Android and in the browser.">
 <meta property="og:image" content="img/timer-light.webp">
 <meta name="theme-color" content="#2B3A4A">
 <link rel="icon" href="img/icon.png">
@@ -134,7 +134,7 @@
   .step h3 { margin: 0 0 6px; font-size: 18px; }
   .step p { margin: 0; color: var(--sub); font-size: 15px; }
 
-  .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .features { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
   .feature { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 24px; transition: transform .2s, box-shadow .2s; }
   .feature:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
   .feature .fi { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; margin-bottom: 14px; }
@@ -160,6 +160,24 @@
   .plat .soon { align-self: flex-start; font-size: 12px; font-weight: 700; letter-spacing: .04em; color: var(--amber); background: color-mix(in srgb, var(--amber) 14%, transparent); padding: 4px 10px; border-radius: 999px; }
 
   .faq { max-width: 760px; }
+  .news { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .rel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px; }
+  .rel h3 { margin: 0; font-size: 20px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .rel .date { color: var(--sub); font-size: 13px; }
+  .rel .new { font-size: 11px; font-weight: 700; letter-spacing: .04em; color: var(--green); background: color-mix(in srgb, var(--green) 14%, transparent); padding: 3px 9px; border-radius: 999px; }
+  .rel ul { margin: 12px 0 0; padding-left: 18px; color: var(--sub); font-size: 15px; }
+  .rel li { margin: 4px 0; }
+  .rel p { color: var(--sub); font-size: 15px; margin: 10px 0 0; }
+  .morelink { display: inline-block; margin-top: 18px; font-weight: 600; color: var(--text); text-decoration: none; border-bottom: 2px solid var(--green); }
+  .fb { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .fb a { display: flex; gap: 14px; align-items: flex-start; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px; color: var(--text); text-decoration: none; transition: transform .2s, box-shadow .2s; }
+  .fb a:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
+  .fb svg { width: 26px; height: 26px; flex: none; }
+  .fb b { display: block; font-size: 17px; }
+  .fb span span { color: var(--sub); font-size: 14px; }
+  .why { margin-top: 16px; background: var(--surface); border: 1px dashed var(--line); border-radius: var(--radius); padding: 18px 22px; color: var(--sub); font-size: 15px; }
+  .why b { color: var(--text); }
+  footer nav { position: static; background: none; backdrop-filter: none; -webkit-backdrop-filter: none; display: flex; gap: 18px; flex-wrap: wrap; border: 0; }
   details { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 4px 20px; margin-bottom: 10px; }
   summary { cursor: pointer; font-weight: 600; padding: 14px 0; list-style: none; display: flex; justify-content: space-between; gap: 12px; }
   summary::-webkit-details-marker { display: none; }
@@ -186,11 +204,13 @@
     html { scroll-behavior: auto; }
   }
 
+  @media (max-width: 1060px) { .features { grid-template-columns: repeat(2, 1fr); } }
   @media (max-width: 900px) {
     .hero { grid-template-columns: 1fr; gap: 48px; padding-top: 28px; }
-    .steps, .features, .platforms { grid-template-columns: 1fr; }
+    .steps, .platforms, .news, .fb { grid-template-columns: 1fr; }
     .float.f1 { left: 0; } .float.f2 { right: 0; }
   }
+  @media (max-width: 600px) { .features { grid-template-columns: 1fr; } }
   @media (max-width: 520px) {
     .btn { flex: 1 1 100%; }
     .device { width: 300px; }
@@ -229,6 +249,10 @@
         <a class="btn secondary dl-android" href="#">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M11 18.5h2"/></svg>
           <span class="lbl"><strong data-t="dlAndroid"></strong><span data-t="dlAndroidSub"></span></span>
+        </a>
+        <a class="btn secondary" href="app/">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M2.5 12h19M12 2.5c2.6 2.7 3.9 5.9 3.9 9.5s-1.3 6.8-3.9 9.5c-2.6-2.7-3.9-5.9-3.9-9.5s1.3-6.8 3.9-9.5z"/></svg>
+          <span class="lbl"><strong data-t="openWeb"></strong><span data-t="openWebSub"></span></span>
         </a>
       </div>
       <div class="meta"><span id="version" data-t="free"></span></div>
@@ -289,6 +313,8 @@
       <div class="feature"><div class="fi c-red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></div><h3 data-t="f4t"></h3><p data-t="f4"></p></div>
       <div class="feature"><div class="fi c-green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h.01M11 10h.01M15 10h.01M7 14h10"/></svg></div><h3 data-t="f5t"></h3><p data-t="f5"></p></div>
       <div class="feature"><div class="fi c-amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/></svg></div><h3 data-t="f6t"></h3><p data-t="f6"></p></div>
+      <div class="feature"><div class="fi c-blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg></div><h3 data-t="f7t"></h3><p data-t="f7"></p></div>
+      <div class="feature"><div class="fi c-red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="5" rx="1.5"/><path d="M5 9v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9M10 13h4"/></svg></div><h3 data-t="f8t"></h3><p data-t="f8"></p></div>
     </div>
   </section>
 
@@ -319,8 +345,30 @@
       </div>
       <div class="plat">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="2.5" width="17" height="19" rx="2.5"/><path d="M11 18.5h2"/></svg>
-        <h3>iPad</h3><p data-t="pIpad"></p><span class="soon" data-t="soon"></span>
+        <h3 data-t="webTitle"></h3><p data-t="pIpad"></p><a href="app/" data-t="openWebShort"></a>
       </div>
+    </div>
+    <div class="why"><b data-t="whyTitle"></b> <span data-t="whyText"></span> <a href="#faq-ios" data-t="readMore" style="color:var(--text)"></a></div>
+  </section>
+
+  <!-- WHAT'S NEW (taken straight from the GitHub releases) -->
+  <section class="block reveal" id="news">
+    <p class="kicker" data-t="newsKicker"></p>
+    <h2 data-t="newsTitle"></h2>
+    <p class="lead" data-t="newsLead"></p>
+    <div class="news" id="news-list"><div class="rel"><p data-t="newsLoading"></p></div></div>
+    <a class="morelink" id="all-releases" href="#" data-t="allReleases"></a>
+  </section>
+
+  <!-- FEEDBACK -->
+  <section class="block reveal" id="feedback">
+    <p class="kicker" data-t="fbKicker"></p>
+    <h2 data-t="fbTitle"></h2>
+    <p class="lead" data-t="fbLead"></p>
+    <div class="fb">
+      <a class="mail" data-kind="bug" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 8a4 4 0 0 1 8 0v6a4 4 0 0 1-8 0z"/><path d="M4 12h4M16 12h4M5 6l3 2M19 6l-3 2M5 19l3-2M19 19l-3-2M12 10v8"/></svg><span><b data-t="fbBug"></b><span data-t="fbBugSub"></span></span></a>
+      <a class="mail" data-kind="idea" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.8V16h5v-.3c0-.7.4-1.4 1-1.8A6 6 0 0 0 12 3z"/></svg><span><b data-t="fbIdea"></b><span data-t="fbIdeaSub"></span></span></a>
+      <a class="mail" data-kind="other" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.9A8 8 0 1 1 21 12z"/></svg><span><b data-t="fbOther"></b><span data-t="fbOtherSub"></span></span></a>
     </div>
   </section>
 
@@ -332,6 +380,8 @@
       <details><summary data-t="q1"></summary><p data-t="a1"></p></details>
       <details><summary data-t="q2"></summary><p data-t="a2"></p></details>
       <details><summary data-t="q3"></summary><p data-t="a3"></p></details>
+      <details id="faq-ios"><summary data-t="q5"></summary><p data-t="a5"></p></details>
+      <details><summary data-t="q6"></summary><p data-t="a6"></p></details>
       <details><summary data-t="q4"></summary><p data-t="a4"></p></details>
     </div>
   </section>
@@ -344,13 +394,20 @@
       <div class="buttons">
         <a class="btn dl-windows" href="#"><span class="lbl"><strong data-t="dlWindows"></strong><span data-t="dlWindowsSub"></span></span></a>
         <a class="btn secondary dl-android" href="#"><span class="lbl"><strong data-t="dlAndroid"></strong><span data-t="dlAndroidSub"></span></span></a>
+        <a class="btn secondary" href="app/"><span class="lbl"><strong data-t="openWeb"></strong><span data-t="openWebSub"></span></span></a>
       </div>
     </div>
   </section>
 
   <footer>
     <span data-t="footer"></span>
-    <a id="gh-link" href="#" data-t="source"></a>
+    <nav aria-label="Footer">
+      <a href="app/" data-t="openWebShort"></a>
+      <a href="#news" data-t="newsKicker"></a>
+      <a href="#feedback" data-t="fbKicker"></a>
+      <a href="privacy.html" data-t="privacy"></a>
+      <a id="gh-link" href="#" data-t="source"></a>
+    </nav>
   </footer>
 </main>
 
@@ -370,7 +427,7 @@
   // ---------- Texts ----------
   var T = {
     en: {
-      eyebrow: "Free for Windows and Android",
+      eyebrow: "Free for Windows, Android and the web",
       headline: "Always <em>on time.</em>",
       tagline: "A speech timer that splits your talk into parts, so you always know whether you’re ahead or behind.",
       dlWindows: "Download for Windows", dlWindowsSub: "Windows 10 and 11 · .msi",
@@ -402,7 +459,7 @@
       platKicker: "Platforms", platTitle: "Use it where you speak",
       pWin: "Install on your laptop and use the keyboard or a presentation clicker.",
       pAnd: "Keep it on your phone. Optional smartwatch buzz and Do Not Disturb while you speak.",
-      pIpad: "A version that runs in Safari and can be added to the Home Screen.",
+      pIpad: "Runs in Safari, Chrome or Edge. On iPad: tap Share, then “Add to Home Screen”, and it works like an app, offline too.",
       soon: "COMING SOON", dlShort: "Download",
       faqTitle: "Good to know",
       q1: "Windows says “Windows protected your PC”. Is that safe?",
@@ -414,10 +471,43 @@
       q4: "Does it cost anything?",
       a4: "No. Speech Split is free, with no ads and no in-app purchases.",
       ctaTitle: "Ready for your next speech?", ctaText: "Download Speech Split and practise with confidence.",
-      footer: "Speech Split · Made by SRRLSM", source: "View on GitHub"
+      footer: "Speech Split · Made by Dylan Scott Meschner", source: "View on GitHub",
+      openWeb: "Open in the browser",
+      openWebSub: "iPad, Mac and more · no install",
+      openWebShort: "Open the web version",
+      webTitle: "iPad, Mac and more",
+      whyTitle: "Why is there no App Store app?",
+      whyText: "Apple charges $99 a year for an App Store app. Speech Split is free and made in my spare time, so the web version is the free way to bring it to iPad and Mac.",
+      readMore: "Read more",
+      f7t: "Import your speech",
+      f7: "Drop in a PDF, Word or text file. Speech Split suggests the segments and times from your headings and word count.",
+      f8t: "Sort and archive",
+      f8: "Sort by last used, newest or name. Archive old speeches to keep the list short, and restore them any time.",
+      newsKicker: "What’s new",
+      newsTitle: "Patch notes",
+      newsLead: "Every update, straight from the release notes on GitHub.",
+      newsLoading: "Loading…",
+      newsFailed: "Couldn’t load the patch notes right now.",
+      allReleases: "All versions on GitHub",
+      latestTag: "LATEST",
+      fbKicker: "Feedback",
+      fbTitle: "Help make it better",
+      fbLead: "Found a bug, or have an idea for a feature? Pick one, and your email app opens with a short template.",
+      fbBug: "Report a bug",
+      fbBugSub: "Something doesn’t work as it should.",
+      fbIdea: "Suggest an improvement",
+      fbIdeaSub: "A feature or change you’d like to see.",
+      fbOther: "Something else",
+      fbOtherSub: "Questions, praise, anything.",
+      fbDescribe: "Describe it here (for a bug: what you did, and what happened):",
+      q5: "Why is there no iPhone or iPad app?",
+      a5: "Putting an app on the App Store costs $99 every year (Apple’s developer membership), even for a free app, and it has to be built on a Mac. Apps you install without the App Store stop working after 7 days. So for now, the free way is the web version: open it in Safari, tap Share and “Add to Home Screen”. It gets its own icon, works offline, and has the same features, except the smartwatch buzz and Do Not Disturb, which a browser isn’t allowed to control.",
+      q6: "Can I import a speech I’ve already written?",
+      a6: "Yes. Tap Import and choose a PDF, Word (.docx), OpenDocument or text file, or simply drag it onto the app. Segments are suggested from the headings in the document (or as parts of equal length), with times from the word count or a total you choose. You can change everything before saving. The document is read on your device and never uploaded.",
+      privacy: "Privacy"
     },
     no: {
-      eyebrow: "Gratis for Windows og Android",
+      eyebrow: "Gratis for Windows, Android og nett",
       headline: "Alltid <em>i rute.</em>",
       tagline: "En taletimer som deler talen inn i deler, så du alltid vet om du ligger foran eller bak.",
       dlWindows: "Last ned for Windows", dlWindowsSub: "Windows 10 og 11 · .msi",
@@ -449,7 +539,7 @@
       platKicker: "Plattformer", platTitle: "Bruk den der du taler",
       pWin: "Installer på PC-en og bruk tastaturet eller en presentasjonsklikker.",
       pAnd: "Ha den på telefonen. Valgfri vibrering på smartklokka og «Ikke forstyrr» mens du taler.",
-      pIpad: "En versjon som kjører i Safari og kan legges på Hjem-skjermen.",
+      pIpad: "Kjører i Safari, Chrome eller Edge. På iPad: trykk Del og «Legg til på Hjem-skjerm», så virker den som en app, også uten nett.",
       soon: "KOMMER SNART", dlShort: "Last ned",
       faqTitle: "Greit å vite",
       q1: "Windows sier «Windows beskyttet PC-en». Er det trygt?",
@@ -461,10 +551,43 @@
       q4: "Koster det noe?",
       a4: "Nei. Speech Split er gratis, uten reklame og uten kjøp i appen.",
       ctaTitle: "Klar for neste tale?", ctaText: "Last ned Speech Split og øv med selvtillit.",
-      footer: "Speech Split · Laget av SRRLSM", source: "Se på GitHub"
+      footer: "Speech Split · Laget av Dylan Scott Meschner", source: "Se på GitHub",
+      openWeb: "Åpne i nettleseren",
+      openWebSub: "iPad, Mac og mer · ingen installasjon",
+      openWebShort: "Åpne nettversjonen",
+      webTitle: "iPad, Mac og mer",
+      whyTitle: "Hvorfor finnes det ingen app i App Store?",
+      whyText: "Apple tar 99 dollar i året for en app i App Store. Speech Split er gratis og laget på fritiden, så nettversjonen er den gratis måten å få den på iPad og Mac.",
+      readMore: "Les mer",
+      f7t: "Importer talen",
+      f7: "Slipp inn en PDF, Word- eller tekstfil. Speech Split foreslår segmenter og tider ut fra overskriftene og antall ord.",
+      f8t: "Sorter og arkiver",
+      f8: "Sorter etter sist brukt, nyeste eller navn. Arkiver gamle taler så lista holdes kort, og hent dem fram igjen når du vil.",
+      newsKicker: "Nytt",
+      newsTitle: "Patch notes",
+      newsLead: "Alle oppdateringer, rett fra versjonsnotatene på GitHub.",
+      newsLoading: "Laster…",
+      newsFailed: "Fikk ikke hentet patch notes akkurat nå.",
+      allReleases: "Alle versjoner på GitHub",
+      latestTag: "NYESTE",
+      fbKicker: "Tilbakemelding",
+      fbTitle: "Hjelp til å gjøre den bedre",
+      fbLead: "Funnet en feil, eller har du en idé til en funksjon? Velg en av dem, så åpnes e-postappen med en kort mal.",
+      fbBug: "Meld en feil",
+      fbBugSub: "Noe virker ikke som det skal.",
+      fbIdea: "Foreslå en forbedring",
+      fbIdeaSub: "En funksjon eller endring du ønsker deg.",
+      fbOther: "Noe annet",
+      fbOtherSub: "Spørsmål, ros, hva som helst.",
+      fbDescribe: "Beskriv det her (ved en feil: hva du gjorde, og hva som skjedde):",
+      q5: "Hvorfor finnes det ingen app for iPhone eller iPad?",
+      a5: "Å legge en app i App Store koster 99 dollar hvert år (Apples utviklermedlemskap), også for gratis apper, og den må bygges på en Mac. Apper du installerer uten App Store slutter å virke etter 7 dager. Derfor er nettversjonen den gratis løsningen foreløpig: åpne den i Safari, trykk Del og «Legg til på Hjem-skjerm». Da får den eget ikon, virker uten nett og har de samme funksjonene, bortsett fra vibrering på smartklokka og «Ikke forstyrr», som en nettleser ikke får lov til å styre.",
+      q6: "Kan jeg importere en tale jeg allerede har skrevet?",
+      a6: "Ja. Trykk Importer og velg en PDF-, Word- (.docx), OpenDocument- eller tekstfil, eller bare dra den inn i appen. Segmentene foreslås ut fra overskriftene i dokumentet (eller som like lange deler), med tider ut fra antall ord eller en total tid du velger. Du kan endre alt før du lagrer. Dokumentet leses på enheten din og lastes aldri opp.",
+      privacy: "Personvern"
     },
     de: {
-      eyebrow: "Kostenlos für Windows und Android",
+      eyebrow: "Kostenlos für Windows, Android und im Browser",
       headline: "Immer <em>im Plan.</em>",
       tagline: "Ein Rede-Timer, der deinen Vortrag in Abschnitte teilt, damit du immer weißt, ob du vor oder hinter dem Plan liegst.",
       dlWindows: "Für Windows herunterladen", dlWindowsSub: "Windows 10 und 11 · .msi",
@@ -496,7 +619,7 @@
       platKicker: "Plattformen", platTitle: "Nutze sie dort, wo du sprichst",
       pWin: "Auf dem Laptop installieren und mit Tastatur oder Presenter bedienen.",
       pAnd: "Immer auf dem Handy dabei. Optional mit Smartwatch-Vibration und „Nicht stören“ während der Rede.",
-      pIpad: "Eine Version, die in Safari läuft und auf den Home-Bildschirm gelegt werden kann.",
+      pIpad: "Läuft in Safari, Chrome oder Edge. Auf dem iPad: Teilen und „Zum Home-Bildschirm“ tippen, dann funktioniert sie wie eine App, auch offline.",
       soon: "BALD VERFÜGBAR", dlShort: "Herunterladen",
       faqTitle: "Gut zu wissen",
       q1: "Windows zeigt „Der Computer wurde durch Windows geschützt“. Ist das sicher?",
@@ -508,7 +631,40 @@
       q4: "Kostet das etwas?",
       a4: "Nein. Speech Split ist kostenlos, ohne Werbung und ohne In-App-Käufe.",
       ctaTitle: "Bereit für deine nächste Rede?", ctaText: "Lade Speech Split herunter und übe mit gutem Gefühl.",
-      footer: "Speech Split · Gemacht von SRRLSM", source: "Auf GitHub ansehen"
+      footer: "Speech Split · Gemacht von Dylan Scott Meschner", source: "Auf GitHub ansehen",
+      openWeb: "Im Browser öffnen",
+      openWebSub: "iPad, Mac und mehr · ohne Installation",
+      openWebShort: "Webversion öffnen",
+      webTitle: "iPad, Mac und mehr",
+      whyTitle: "Warum gibt es keine App im App Store?",
+      whyText: "Apple verlangt 99 Dollar im Jahr für eine App im App Store. Speech Split ist kostenlos und in der Freizeit entstanden, daher ist die Webversion der kostenlose Weg auf iPad und Mac.",
+      readMore: "Mehr lesen",
+      f7t: "Rede importieren",
+      f7: "Zieh eine PDF-, Word- oder Textdatei hinein. Speech Split schlägt Abschnitte und Zeiten anhand der Überschriften und der Wortzahl vor.",
+      f8t: "Sortieren und archivieren",
+      f8: "Nach zuletzt benutzt, neueste oder Name sortieren. Alte Reden archivieren und jederzeit wiederherstellen.",
+      newsKicker: "Neu",
+      newsTitle: "Versionshinweise",
+      newsLead: "Jedes Update, direkt aus den Versionshinweisen auf GitHub.",
+      newsLoading: "Wird geladen…",
+      newsFailed: "Die Versionshinweise konnten gerade nicht geladen werden.",
+      allReleases: "Alle Versionen auf GitHub",
+      latestTag: "NEUESTE",
+      fbKicker: "Feedback",
+      fbTitle: "Hilf mit, sie besser zu machen",
+      fbLead: "Einen Fehler gefunden oder eine Idee für eine Funktion? Wähle aus, dann öffnet sich deine E-Mail-App mit einer kurzen Vorlage.",
+      fbBug: "Fehler melden",
+      fbBugSub: "Etwas funktioniert nicht richtig.",
+      fbIdea: "Verbesserung vorschlagen",
+      fbIdeaSub: "Eine Funktion oder Änderung, die du dir wünschst.",
+      fbOther: "Etwas anderes",
+      fbOtherSub: "Fragen, Lob, alles Mögliche.",
+      fbDescribe: "Beschreibe es hier (bei einem Fehler: was du gemacht hast und was passiert ist):",
+      q5: "Warum gibt es keine App für iPhone oder iPad?",
+      a5: "Eine App im App Store kostet jedes Jahr 99 Dollar (Apples Entwicklermitgliedschaft), auch wenn sie kostenlos ist, und sie muss auf einem Mac gebaut werden. Apps, die ohne App Store installiert werden, funktionieren nach 7 Tagen nicht mehr. Deshalb ist die Webversion vorerst der kostenlose Weg: In Safari öffnen, Teilen und „Zum Home-Bildschirm“ tippen. Sie bekommt ein eigenes Symbol, funktioniert offline und kann dasselbe, außer der Smartwatch-Vibration und „Nicht stören“, die ein Browser nicht steuern darf.",
+      q6: "Kann ich eine Rede importieren, die ich schon geschrieben habe?",
+      a6: "Ja. Tippe auf Importieren und wähle eine PDF-, Word- (.docx), OpenDocument- oder Textdatei, oder zieh sie einfach auf die App. Abschnitte werden anhand der Überschriften vorgeschlagen (oder als gleich lange Teile), mit Zeiten nach Wortzahl oder einer Gesamtzeit deiner Wahl. Du kannst vor dem Speichern alles ändern. Das Dokument wird auf deinem Gerät gelesen und nie hochgeladen.",
+      privacy: "Datenschutz"
     }
   };
 
@@ -521,16 +677,60 @@
     if (latest) document.getElementById("version").innerHTML = t.version.replace("{v}", latest);
     document.querySelectorAll(".lang button").forEach(function (b) { b.setAttribute("aria-pressed", b.dataset.lang === cur ? "true" : "false"); });
     try { localStorage.setItem("lang", cur); } catch (e) {}
+    if (typeof renderNews === "function") { renderNews(); updateMailLinks(); }
   }
   document.querySelectorAll(".lang button").forEach(function (b) { b.addEventListener("click", function () { setLang(b.dataset.lang); }); });
   var saved = null; try { saved = localStorage.getItem("lang"); } catch (e) {}
   var bl = (navigator.language || "en").slice(0, 2);
   setLang(saved || (bl === "nb" || bl === "nn" || bl === "no" ? "no" : bl === "de" ? "de" : "en"));
 
-  fetch("https://api.github.com/repos/" + owner + "/" + repo + "/releases/latest")
-    .then(function (r) { return r.ok ? r.json() : null; })
-    .then(function (d) { if (d && d.tag_name) { latest = d.tag_name.replace(/^v/, ""); setLang(cur); } })
-    .catch(function () {});
+  // ---------- Patch notes: the latest releases, straight from GitHub ----------
+  var releasesData = null, releasesFailed = false;
+  document.getElementById("all-releases").href = releases;
+  function escapeHtml(x) { return String(x).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  /** Release notes are Markdown: lists become lists, headings and bold become plain text. */
+  function notesHtml(md) {
+    var out = "", inList = false;
+    String(md || "").split(/\r?\n/).forEach(function (line) {
+      var l = line.trim().replace(/\*\*|__/g, "").replace(/`/g, "");
+      if (!l) return;
+      var m = /^[*-]\s+(.*)$/.exec(l);
+      if (m) { if (!inList) { out += "<ul>"; inList = true; } out += "<li>" + escapeHtml(m[1]) + "</li>"; return; }
+      if (inList) { out += "</ul>"; inList = false; }
+      out += "<p>" + escapeHtml(l.replace(/^#{1,6}\s*/, "")) + "</p>";
+    });
+    return out + (inList ? "</ul>" : "");
+  }
+  function renderNews() {
+    var box = document.getElementById("news-list"), t = T[cur];
+    if (releasesFailed) { box.innerHTML = '<div class="rel"><p>' + t.newsFailed + "</p></div>"; return; }
+    if (!releasesData) return;
+    box.innerHTML = releasesData.slice(0, 3).map(function (r, i) {
+      var v = String(r.tag_name).replace(/^v/i, ""), date = "";
+      try { date = new Date(r.published_at).toLocaleDateString(cur === "no" ? "nb-NO" : cur, { year: "numeric", month: "long", day: "numeric" }); } catch (e) {}
+      return '<div class="rel"><h3>' + escapeHtml(t.version.replace(/<[^>]+>/g, "").split("·")[0].replace("{v}", v).trim()) + (i === 0 ? ' <span class="new">' + t.latestTag + "</span>" : "") +
+        '</h3><div class="date">' + escapeHtml(date) + "</div>" + notesHtml(r.body) + "</div>";
+    }).join("");
+  }
+  fetch("https://api.github.com/repos/" + owner + "/" + repo + "/releases?per_page=10")
+    .then(function (r) { if (!r.ok) throw new Error(); return r.json(); })
+    .then(function (list) {
+      releasesData = list.filter(function (r) { return !r.draft && !r.prerelease && r.tag_name; });
+      if (releasesData.length) latest = String(releasesData[0].tag_name).replace(/^v/i, "");
+      setLang(cur);
+    })
+    .catch(function () { releasesFailed = true; renderNews(); });
+
+  // ---------- Feedback: opens the email app with a short template ----------
+  var FEEDBACK_EMAIL = "dylan123@live.no";
+  function updateMailLinks() {
+    var t = T[cur], label = { bug: t.fbBug, idea: t.fbIdea, other: t.fbOther };
+    document.querySelectorAll("a.mail").forEach(function (a) {
+      var body = t.fbDescribe + "\n\n\n\n---\n" + (latest ? "Speech Split " + latest + " · " : "") + "website";
+      a.href = "mailto:" + FEEDBACK_EMAIL + "?subject=" + encodeURIComponent("Speech Split: " + label[a.dataset.kind]) + "&body=" + encodeURIComponent(body);
+    });
+  }
+  updateMailLinks();
 
   // ---------- Sticky nav border + reveal on scroll ----------
   var nav = document.getElementById("nav");

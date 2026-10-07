@@ -8,6 +8,8 @@ import no.srrlsm.speechsplit.core.CelebrateOptions
 import no.srrlsm.speechsplit.core.ClockMode
 import no.srrlsm.speechsplit.core.PracticeRun
 import no.srrlsm.speechsplit.core.SpeechPlan
+import no.srrlsm.speechsplit.core.SpeechSort
+import no.srrlsm.speechsplit.core.WarningOptions
 import no.srrlsm.speechsplit.core.ThemeMode
 import no.srrlsm.speechsplit.jvm.JsonCodec
 import org.json.JSONObject
@@ -62,7 +64,7 @@ class AndroidStore(context: Context) : AppStore {
             language = JsonCodec.enumOrDefault(getString("language", null), AppLanguage.SYSTEM),
             themeMode = JsonCodec.enumOrDefault(getString("themeMode", null), ThemeMode.SYSTEM),
             celebrateTolerance = getInt("celebrateTolerance", 0).let { if (it in CelebrateOptions) it else 0 },
-            warningPercent = getInt("warningPercent", 10),
+            warningPercent = getInt("warningPercent", 10).let { if (it in WarningOptions) it else 10 },
             clockMode = JsonCodec.enumOrDefault(getString("clockMode", null), ClockMode.REMAINING),
             showAdjusted = getBoolean("showAdjusted", true),
             flashAlerts = getBoolean("flashAlerts", true),
@@ -72,6 +74,8 @@ class AndroidStore(context: Context) : AppStore {
             dndWhileSpeaking = getBoolean("dndWhileSpeaking", false),
             lecternMode = getBoolean("lecternMode", false),
             autoUpdateCheck = getBoolean("autoUpdateCheck", true),
+            speechSort = JsonCodec.enumOrDefault(getString("speechSort", null), SpeechSort.LAST_USED),
+            wordsPerMinute = getInt("wordsPerMinute", 130).coerceIn(60, 250),
         )
     }
 
@@ -90,6 +94,8 @@ class AndroidStore(context: Context) : AppStore {
             .putBoolean("dndWhileSpeaking", settings.dndWhileSpeaking)
             .putBoolean("lecternMode", settings.lecternMode)
             .putBoolean("autoUpdateCheck", settings.autoUpdateCheck)
+            .putString("speechSort", settings.speechSort.name)
+            .putInt("wordsPerMinute", settings.wordsPerMinute)
             .apply()
     }
 
