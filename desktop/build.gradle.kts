@@ -60,7 +60,8 @@ compose.desktop {
             description = "Speech timer with segments"
             vendor = "Dylan Scott Meschner"
             copyright = "© 2026 Dylan Scott Meschner"
-            modules("java.naming", "java.instrument", "jdk.unsupported", "java.logging")
+            // java.management: memory/GC numbers for the freeze log (FreezeWatch.kt)
+            modules("java.naming", "java.instrument", "jdk.unsupported", "java.logging", "java.management")
 
             windows {
                 iconFile.set(project.file("icons/icon.ico"))

@@ -1,5 +1,6 @@
 package no.srrlsm.speechsplit.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -81,6 +82,9 @@ fun LibraryScreen(app: AppController) {
     var showPaste by remember { mutableStateOf(false) }
     var showQuick by remember { mutableStateOf(false) }
     var planToDelete by remember { mutableStateOf<SpeechPlan?>(null) }
+    var planToExport by remember { mutableStateOf<SpeechPlan?>(null) }
+    var exportLibrary by remember { mutableStateOf(false) }
+    val wide = LocalWideLayout.current
     val plans = app.visiblePlans
     val archivedCount = app.archivedPlans.size
     // Narrow split-screen panes: smaller heading, so the icons still fit next to it
@@ -93,14 +97,20 @@ fun LibraryScreen(app: AppController) {
             ) {
                 Text(
                     s.libraryTitle,
-                    fontSize = if (narrow) 24.sp else 32.sp,
+                    // The list pane next to an open speech is narrower: smaller heading there too
+                    fontSize = if (narrow || wide) 26.sp else 32.sp,
+                    lineHeight = if (narrow || wide) 30.sp else 36.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),
                 )
                 SortMenu(app)
-                IconButton(onClick = { if (ui.canPickDocuments) showImportChoice = true else showPaste = true }) {
+                // Export the whole library (speeches, archive, history) as one file
+                IconButton(onClick = { exportLibrary = true }) {
+                    Icon(Icons.Default.Upload, contentDescription = s.exportLibrary, tint = c.textMain)
+                }
+                IconButton(onClick = { app.guardEdits { if (ui.canPickDocuments) showImportChoice = true else showPaste = true } }) {
                     Icon(Icons.Default.Download, contentDescription = s.importLabel, tint = c.textMain)
                 }
             }
@@ -122,24 +132,26 @@ fun LibraryScreen(app: AppController) {
                         Spacer(Modifier.height(8.dp))
                         Text(s.dropHint, color = c.textSub, fontSize = 14.sp)
                     }
-                    if (archivedCount > 0) ArchiveLink(archivedCount) { app.openArchive() }
+                    if (archivedCount > 0) ArchiveLink(archivedCount) { app.guardEdits { app.openArchive() } }
                 }
             } else {
                 LazyColumn(Modifier.weight(1f)) {
                     items(plans, key = { it.id }) { plan ->
                         PlanCard(
                             plan = plan,
-                            onOpen = { app.openPlan(plan) },
+                            // In the wide layout the open speech is shown next to the list: mark it
+                            selected = wide && app.activePlan?.id == plan.id,
+                            onOpen = { if (app.activePlan?.id != plan.id || app.currentScreen != AppScreen.EDIT) app.guardEdits { app.openPlan(plan) } },
                             menu = { close ->
                                 DropdownMenuItem(
                                     text = { Text(s.edit) },
                                     leadingIcon = { Icon(Icons.Default.Edit, null) },
-                                    onClick = { close(); app.editPlan(plan) },
+                                    onClick = { close(); app.guardEdits { app.editPlan(plan) } },
                                 )
                                 DropdownMenuItem(
                                     text = { Text(s.export) },
                                     leadingIcon = { Icon(Icons.Default.Share, null) },
-                                    onClick = { close(); ui.share(app.exportPlan(plan), s.exportChooser) },
+                                    onClick = { close(); startExport(app, plan, ui) { planToExport = plan } },
                                 )
                                 DropdownMenuItem(
                                     text = { Text(s.archiveAction) },
@@ -155,19 +167,19 @@ fun LibraryScreen(app: AppController) {
                         )
                     }
                     if (archivedCount > 0) {
-                        item(key = "archive") { ArchiveLink(archivedCount) { app.openArchive() } }
+                        item(key = "archive") { ArchiveLink(archivedCount) { app.guardEdits { app.openArchive() } } }
                     }
                 }
             }
 
             Spacer(Modifier.height(16.dp))
-            Button(onClick = { app.createNewPlan() }, modifier = Modifier.fillMaxWidth().height(56.dp)) {
+            Button(onClick = { app.guardEdits { app.createNewPlan() } }, modifier = Modifier.fillMaxWidth().height(56.dp)) {
                 Icon(Icons.Default.Add, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
                 FitText(s.createNewSpeech, maxSize = 18.sp, fontWeight = FontWeight.Medium)
             }
             Spacer(Modifier.height(8.dp))
-            OutlinedButton(onClick = { showQuick = true }, modifier = Modifier.fillMaxWidth().height(48.dp)) {
+            OutlinedButton(onClick = { app.guardEdits { showQuick = true } }, modifier = Modifier.fillMaxWidth().height(48.dp)) {
                 Icon(Icons.Default.Timer, contentDescription = null, tint = c.textMain)
                 Spacer(Modifier.width(8.dp))
                 FitText(s.quickTimer, maxSize = 16.sp, fontWeight = FontWeight.Medium, color = c.textMain)
@@ -213,19 +225,29 @@ fun LibraryScreen(app: AppController) {
     planToDelete?.let { plan ->
         DeletePlanDialog(app, plan, onDone = { planToDelete = null })
     }
+
+    planToExport?.let { plan ->
+        ExportDialog(app, plan, onDismiss = { planToExport = null })
+    }
+    if (exportLibrary) ExportDialog(app, null, onDismiss = { exportLibrary = false })
 }
 
 /** One speech in the list. Its actions sit in a "⋮" menu, so the title keeps its room in narrow panes. */
 @Composable
 private fun PlanCard(
     plan: SpeechPlan,
+    selected: Boolean,
     onOpen: () -> Unit,
     menu: @Composable ColumnScope.(close: () -> Unit) -> Unit,
 ) {
     val s = LocalStrings.current
     val c = AppTheme.colors
     var open by remember { mutableStateOf(false) }
-    Card(onClick = onOpen, modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+    Card(
+        onClick = onOpen,
+        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+        border = if (selected) BorderStroke(2.dp, c.accent) else null,
+    ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(start = 20.dp, top = 12.dp, bottom = 12.dp, end = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -292,7 +314,7 @@ private fun SortMenu(app: AppController) {
 }
 
 @Composable
-private fun ChoiceRow(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, desc: String, onClick: () -> Unit) {
+internal fun ChoiceRow(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, desc: String, onClick: () -> Unit) {
     val c = AppTheme.colors
     Surface(
         onClick = onClick,
@@ -351,7 +373,11 @@ private fun DeletePlanDialog(app: AppController, plan: SpeechPlan, onDone: () ->
         text = { Text(if (plan.archived) s.cannotBeUndone else s.deleteForeverText) },
         confirmButton = {
             Button(
-                onClick = { app.deletePlan(plan); onDone() },
+                onClick = {
+                    if (app.activePlan?.id == plan.id) app.backToLibrary()
+                    app.deletePlan(plan)
+                    onDone()
+                },
                 colors = ButtonDefaults.buttonColors(containerColor = c.over, contentColor = c.onOver),
             ) { Text(s.delete) }
         },

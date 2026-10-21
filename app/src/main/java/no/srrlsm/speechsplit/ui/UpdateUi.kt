@@ -76,7 +76,7 @@ fun UpdateBanner(app: AppController, modifier: Modifier = Modifier) {
 fun UpdateDialog(app: AppController, release: ReleaseInfo, onDismiss: () -> Unit) {
     val s = LocalStrings.current
     val ui = LocalUiActions.current
-    val notes = remember(release) { plainReleaseNotes(release.notes) }
+    val notes = remember(release, app.languageCode) { plainReleaseNotes(release.notes, app.languageCode) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -236,7 +236,7 @@ fun PatchNotesDialog(app: AppController, onDismiss: () -> Unit) {
                         }
                         if (release.date.isNotBlank()) Text(release.date, fontSize = 12.sp, color = c.textSub)
                         Spacer(Modifier.height(6.dp))
-                        Text(plainReleaseNotes(release.notes).ifBlank { s.noNotes }, fontSize = 14.sp)
+                        Text(plainReleaseNotes(release.notes, app.languageCode).ifBlank { s.noNotes }, fontSize = 14.sp)
                     }
                 }
             }

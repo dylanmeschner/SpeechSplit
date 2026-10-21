@@ -1,6 +1,6 @@
 // Speech Split web version: works offline once it has been opened.
 // Raise VERSION whenever a file below changes, so browsers pick up the new version.
-var VERSION = "speechsplit-web-2.2";
+var VERSION = "speechsplit-web-2.3";
 var CORE = ["./", "index.html", "app.js", "import.js", "strings.js", "manifest.webmanifest", "icon-192.png", "icon-512.png", "apple-touch-icon.png"];
 // The PDF reader is big, so it is only stored after the first PDF import
 var LAZY = ["vendor/pdf.min.js", "vendor/pdf.worker.min.js"];

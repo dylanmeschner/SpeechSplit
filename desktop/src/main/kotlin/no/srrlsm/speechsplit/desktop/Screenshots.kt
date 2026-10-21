@@ -83,7 +83,7 @@ fun main(args: Array<String>) {
 
     for (dark in listOf(false, true)) {
         val mode = if (dark) "dark" else "light"
-        fun shot(name: String, height: Int = 1640, newer: Boolean = false, setup: (AppController, FakeClockPlatform) -> Unit) {
+        fun shot(name: String, height: Int = 1640, width: Int = 880, newer: Boolean = false, setup: (AppController, FakeClockPlatform) -> Unit) {
             val store = MemoryStore(AppSettings(themeMode = if (dark) ThemeMode.DARK else ThemeMode.LIGHT))
             store.plans = listOf(plan, SpeechPlan(title = "Wedding toast", segments = listOf(intro, close)))
             store.runs = listOf(30, 45, 12, 50).mapIndexed { i, over ->
@@ -99,7 +99,7 @@ fun main(args: Array<String>) {
             val app = AppController(store, platform, CoroutineScope(Job()))
             setup(app, platform)
             Thread.sleep(300) // let the (fake) update check finish
-            val scene = ImageComposeScene(width = 880, height = height, density = Density(2f)) {
+            val scene = ImageComposeScene(width = width, height = height, density = Density(2f)) {
                 SpeechSplitTheme(darkTheme = dark) {
                     CompositionLocalProvider(LocalUiActions provides NoUi) { SpeechSplitApp(app) }
                 }
@@ -126,6 +126,14 @@ fun main(args: Array<String>) {
         shot("7-update-banner", newer = true) { _, _ -> }
         shot("8-about", height = 4400, newer = true) { app, _ -> app.openSettings() }
         shot("9-library-archive") { app, _ -> app.archivePlan(app.speechPlans[1]) }
+        // The default Windows window (1180 × 800): list and speech side by side
+        shot("11-wide-library", width = 2360, height = 1600) { _, _ -> }
+        shot("12-wide-ready", width = 2360, height = 1600) { app, _ -> app.openPlan(app.speechPlans[0]) }
+        shot("13-wide-edit", width = 2360, height = 1600) { app, _ -> app.editPlan(app.speechPlans[0]) }
+        shot("14-wide-leave", width = 2360, height = 1600) { app, _ ->
+            app.editPlan(app.speechPlans[0]); app.updateActivePlan { it.copy(title = "Sunday talk v2") }
+            app.guardEdits { app.backToLibrary() }
+        }
         shot("10-import") { app, _ ->
             app.importText(
                 "Sunday talk\n\nIntroduction\nGood morning everyone, and thank you for coming. Today I want to talk about patience.\n\n" +

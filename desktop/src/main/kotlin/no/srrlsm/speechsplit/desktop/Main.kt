@@ -61,14 +61,20 @@ import java.awt.FileDialog
 import java.awt.Frame
 import java.awt.datatransfer.DataFlavor
 
-private val DOC_EXTENSIONS = setOf("pdf", "docx", "odt", "txt", "md", "rtf", "text", "markdown")
+private val DOC_EXTENSIONS = setOf("speechsplit", "json", "pdf", "docx", "odt", "txt", "md", "rtf", "text", "markdown")
 
 // ============================================================================
 // SPEECH SPLIT FOR WINDOWS (and Mac/Linux)
 // The same app logic (core/) and screens (ui/) as the Android app, in a desktop window.
 // ============================================================================
+fun main() {
+    // Notes down what the app was doing if the window ever stops responding (see FreezeWatch.kt)
+    FreezeWatch.start(System.getProperty("speechsplit.version") ?: "dev")
+    runApp()
+}
+
 @OptIn(ExperimentalComposeUiApi::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
-fun main() = application {
+private fun runApp() = application {
     val scope = rememberCoroutineScope()
     val app = remember { AppController(DesktopStore(), DesktopPlatform(), scope) }
     val ui = remember {
@@ -77,6 +83,8 @@ fun main() = application {
             downloadingText = { app.strings.downloadingUpdate },
             pickTitle = { app.strings.importFromFile },
             noEmailText = { app.strings.noEmailApp(it) },
+            savedText = { app.strings.savedFile(it) },
+            saveFailedText = { app.strings.saveFailed },
             openFile = { file -> importFile(app, file) },
             quit = {
                 app.dispose()
@@ -85,9 +93,11 @@ fun main() = application {
         )
     }
     val keys = remember { KeyHandler(app) }
+    // Big enough for the speech list and the open speech side by side, but never bigger than the screen
+    val screen = remember { runCatching { java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment().maximumWindowBounds }.getOrNull() }
     val windowState = rememberWindowState(
-        width = 440.dp,
-        height = 820.dp,
+        width = (screen?.width?.let { minOf(1180, it - 80) } ?: 1180).coerceAtLeast(440).dp,
+        height = (screen?.height?.let { minOf(800, it - 60) } ?: 800).coerceAtLeast(560).dp,
         position = WindowPosition.Aligned(Alignment.Center),
     )
 
@@ -185,14 +195,16 @@ private class KeyHandler(private val app: AppController) {
     }
 }
 
-/** Reads a dropped or picked file and hands it to the shared import logic. */
+/**
+ * Reads a dropped or picked file and hands it to the shared import logic. Reading happens off
+ * the window's thread: a file in Google Drive / OneDrive may first have to be downloaded.
+ */
 private fun importFile(app: AppController, file: File) {
-    if (!file.isFile || file.length() > DocumentReader.MAX_BYTES) {
-        app.importDocument(file.name, ByteArray(0))
-        return
-    }
-    val bytes = runCatching { file.readBytes() }.getOrNull() ?: return
-    app.importDocument(file.name, bytes)
+    Thread({
+        val bytes = if (!file.isFile || file.length() > DocumentReader.MAX_BYTES) ByteArray(0)
+        else runCatching { file.readBytes() }.getOrNull()
+        if (bytes != null) SwingUtilities.invokeLater { app.importDocument(file.name, bytes) }
+    }, "SpeechSplit-import").apply { isDaemon = true }.start()
 }
 
 /** Desktop versions of the things the screens ask the device for. */
@@ -201,16 +213,18 @@ private class DesktopUi(
     private val downloadingText: () -> String,
     private val pickTitle: () -> String,
     private val noEmailText: (String) -> String,
+    private val savedText: (String) -> String,
+    private val saveFailedText: () -> String,
     private val openFile: (File) -> Unit,
     private val quit: () -> Unit,
 ) : UiActions {
     override val canPickDocuments: Boolean = true
 
-    /** The system's own "Open" window, filtered to speech documents. */
+    /** The system's own "Open" window, filtered to saved speeches and speech documents. */
     override fun pickDocument() {
         val dialog = FileDialog(null as Frame?, pickTitle(), FileDialog.LOAD).apply {
             // Windows ignores filenameFilter, but uses this pattern
-            file = "*.pdf;*.docx;*.odt;*.txt;*.md;*.rtf"
+            file = "*.speechsplit;*.pdf;*.docx;*.odt;*.txt;*.md;*.rtf;*.json"
             setFilenameFilter { _, name -> name.substringAfterLast('.').lowercase() in DOC_EXTENSIONS }
         }
         dialog.isVisible = true // blocks until closed
@@ -232,9 +246,41 @@ private class DesktopUi(
     var toastId by mutableStateOf(0)
 
     /** There's no share sheet on a PC, so the text goes to the clipboard instead. */
-    override fun share(text: String, chooserTitle: String) {
-        runCatching { Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(text), null) }
+    override fun share(text: String, chooserTitle: String) = copyText(text)
+
+    /**
+     * On its own thread: Windows can keep the clipboard locked for seconds (clipboard history,
+     * Phone Link, other apps), which used to freeze the whole window.
+     */
+    override fun copyText(text: String) {
+        Thread({
+            runCatching { Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(text), null) }
+        }, "SpeechSplit-clipboard").apply { isDaemon = true }.start()
         toast(copiedText())
+    }
+
+    override val canSaveFiles: Boolean = true
+    private var lastSaveDir: String? = null
+
+    /**
+     * The system's own "Save as" window. Pick Google Drive / OneDrive (they show up as
+     * folders on a PC with their desktop apps), a USB stick, or anywhere else.
+     */
+    override fun saveFile(fileName: String, mimeType: String, text: String) {
+        val dialog = FileDialog(null as Frame?, null, FileDialog.SAVE).apply {
+            directory = lastSaveDir ?: System.getProperty("user.home")?.let { File(it, "Documents").takeIf(File::isDirectory)?.path ?: it }
+            file = fileName
+        }
+        dialog.isVisible = true // blocks until closed
+        val name = dialog.file ?: return
+        val dir = dialog.directory ?: return
+        lastSaveDir = dir
+        val ext = ".${fileName.substringAfterLast('.')}"
+        val target = File(dir, if (name.endsWith(ext, ignoreCase = true)) name else name + ext)
+        Thread({
+            val ok = runCatching { target.writeText(text) }.isSuccess
+            SwingUtilities.invokeLater { toast(if (ok) savedText(target.name) else saveFailedText()) }
+        }, "SpeechSplit-export").apply { isDaemon = true }.start()
     }
 
     override fun toast(text: String) {

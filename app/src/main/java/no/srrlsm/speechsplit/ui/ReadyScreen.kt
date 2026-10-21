@@ -25,6 +25,9 @@ fun ReadyScreen(app: AppController) {
     val c = AppTheme.colors
     val plan = app.activePlan ?: return
     val runCount = app.runsFor(plan.id).size
+    val ui = LocalUiActions.current
+    val wide = LocalWideLayout.current
+    var showExport by remember { mutableStateOf(false) }
     AppBackHandler { app.backToLibrary() }
 
     // Scales with the split-screen pane, like the timer screen does
@@ -94,9 +97,13 @@ fun ReadyScreen(app: AppController) {
                     TextButton(onClick = { app.openHistory() }) {
                         Text(if (runCount > 0) "${s.history} ($runCount)" else s.history, color = c.textSub)
                     }
-                    TextButton(onClick = { app.backToLibrary() }) { Text(s.library, color = c.textSub) }
+                    TextButton(onClick = { startExport(app, plan, ui) { showExport = true } }) { Text(s.export, color = c.textSub) }
+                    // In the wide layout the list is already next to this
+                    if (!wide) TextButton(onClick = { app.backToLibrary() }) { Text(s.library, color = c.textSub) }
                 }
             }
         }
     }
+
+    if (showExport) ExportDialog(app, plan, onDismiss = { showExport = false })
 }

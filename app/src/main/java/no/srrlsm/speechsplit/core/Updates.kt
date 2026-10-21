@@ -63,9 +63,34 @@ private fun parseVersion(v: String): List<Int>? {
     return nums.ifEmpty { null }
 }
 
-/** Release notes from GitHub, with the Markdown symbols removed so they read as plain text. */
-fun plainReleaseNotes(markdown: String): String =
-    markdown.lines()
+/**
+ * Release notes can hold one section per language, each starting with a marker line:
+ *   <!-- en -->   <!-- no -->   <!-- de -->
+ * (invisible on GitHub). This returns the section for [language] ("en", "no", "de"),
+ * falling back to English, then to the first section. Notes without markers are returned as they are.
+ */
+fun notesForLanguage(markdown: String, language: String): String {
+    val marker = Regex("""^\s*<!--\s*(?:lang\s*[:=]\s*)?([a-zA-Z]{2})\s*-->\s*$""")
+    val sections = linkedMapOf<String, StringBuilder>()
+    var current: StringBuilder? = null
+    for (line in markdown.lines()) {
+        val m = marker.find(line)
+        if (m != null) {
+            val code = m.groupValues[1].lowercase().let { if (it == "nb" || it == "nn") "no" else it }
+            current = sections.getOrPut(code) { StringBuilder() }
+        } else {
+            current?.append(line)?.append('\n')
+        }
+    }
+    if (sections.isEmpty()) return markdown
+    val text = (sections[language] ?: sections["en"] ?: sections.values.first()).toString()
+    // A "---" line between the languages only separates them on GitHub
+    return text.lines().filterNot { it.trim().matches(Regex("""-{3,}|\*{3,}|_{3,}""")) }.joinToString("\n").trim()
+}
+
+/** Release notes from GitHub in the app's language, with the Markdown symbols removed so they read as plain text. */
+fun plainReleaseNotes(markdown: String, language: String = "en"): String =
+    notesForLanguage(markdown, language).lines()
         .map { line ->
             line.trim()
                 .replace(Regex("^#{1,6}\\s*"), "")

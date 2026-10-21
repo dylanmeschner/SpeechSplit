@@ -17,7 +17,7 @@ android {
         applicationId = "no.srrlsm.speechtimer"
         minSdk = 24
         targetSdk = 37
-        versionCode = 4
+        versionCode = 5
         versionName = appVersion
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -49,6 +49,8 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     testImplementation(libs.junit)
+    // Real org.json for unit tests (Android's own is only a stub there)
+    testImplementation(libs.json)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)

@@ -18,6 +18,55 @@ interface AppStore {
     /** Plan as shareable text (no ids), and back. Returns null if the text isn't a plan. */
     fun exportPlan(plan: SpeechPlan): String
     fun importPlan(text: String, fallbackTitle: String): SpeechPlan?
+
+    /** A .speechsplit file with one speech, and its practice history if [runs] isn't empty. */
+    fun exportPlanFile(plan: SpeechPlan, runs: List<PracticeRun> = emptyList()): String = exportPlan(plan)
+
+    /** A .speechsplit file with every speech (archived ones too) and all practice history. */
+    fun exportLibraryFile(plans: List<SpeechPlan>, runs: List<PracticeRun>): String = ""
+
+    /** Reads a .speechsplit file, an older export or pasted export text. Null if it isn't one. */
+    fun readSpeechFile(text: String, fallbackTitle: String): SpeechFile? =
+        importPlan(text, fallbackTitle)?.let { SpeechFile(listOf(it), emptyList(), isLibrary = false) }
+
+    /** Writes anything still waiting to be saved. Called when the app closes. */
+    fun flush() {}
+}
+
+/** What a .speechsplit file holds: one speech (maybe with its history), or a whole library backup. */
+data class SpeechFile(
+    val plans: List<SpeechPlan>,
+    val runs: List<PracticeRun>,
+    val isLibrary: Boolean,
+)
+
+/** What "Export" puts in the file. */
+enum class ExportScope { SPEECH, SPEECH_WITH_HISTORY, LIBRARY }
+
+/** "2026-10-21" (UTC) from epoch milliseconds, without any date library. */
+fun isoDate(epochMs: Long): String {
+    // Days since 1970 to year/month/day (Howard Hinnant's civil_from_days)
+    val z = Math.floorDiv(epochMs, 86_400_000L) + 719_468
+    val era = Math.floorDiv(z, 146_097L)
+    val doe = z - era * 146_097
+    val yoe = (doe - doe / 1_460 + doe / 36_524 - doe / 146_096) / 365
+    val doy = doe - (365 * yoe + yoe / 4 - yoe / 100)
+    val mp = (5 * doy + 2) / 153
+    val d = doy - (153 * mp + 2) / 5 + 1
+    val m = if (mp < 10) mp + 3 else mp - 9
+    val y = yoe + era * 400 + if (m <= 2) 1 else 0
+    return "$y-${m.toString().padStart(2, '0')}-${d.toString().padStart(2, '0')}"
+}
+
+/** Speeches saved as files ("Export") use this extension and file type. */
+const val SPEECH_FILE_EXTENSION = "speechsplit"
+const val SPEECH_FILE_MIME = "application/vnd.speechsplit+json"
+
+/** A safe file name for a speech, e.g. "Wedding toast.speechsplit". */
+fun speechFileName(title: String): String {
+    val base = title.replace(Regex("""[\\/:*?"<>|\p{Cntrl}]"""), " ")
+        .replace(Regex("""\s+"""), " ").trim().trimEnd('.').take(60).trim()
+    return "${base.ifBlank { "Speech" }}.$SPEECH_FILE_EXTENSION"
 }
 
 /** Device features used by the app logic. Anything a platform lacks can simply do nothing. */
@@ -33,6 +82,9 @@ interface PlatformServices {
 
     /** e.g. "Android 15" or "Windows 11", for the feedback email. */
     val platformName: String get() = "unknown"
+
+    /** Extra lines for the feedback email, e.g. where a freeze log was written. Null if none. */
+    val diagnosticsNote: String? get() = null
 
     /**
      * Reads a speech document (PDF, Word, OpenDocument, text). Empty if it has no readable text,

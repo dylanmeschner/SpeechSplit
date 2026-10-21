@@ -688,6 +688,21 @@
   var releasesData = null, releasesFailed = false;
   document.getElementById("all-releases").href = releases;
   function escapeHtml(x) { return String(x).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  /**
+   * Release notes can have one section per language, each starting with a line like <!-- no -->
+   * (invisible on GitHub). Shows the chosen language, then English, then the first section.
+   * Older notes without these lines are shown as they are. "---" lines only separate languages.
+   */
+  function notesFor(md, code) {
+    var sections = {}, order = [], at = null;
+    String(md || "").split(/\r?\n/).forEach(function (line) {
+      var m = /^\s*<!--\s*(?:lang\s*[:=]\s*)?([a-zA-Z]{2})\s*-->\s*$/.exec(line);
+      if (m) { var c = m[1].toLowerCase(); if (c === "nb" || c === "nn") c = "no"; if (!sections[c]) { sections[c] = []; order.push(c); } at = sections[c]; return; }
+      if (at) at.push(line);
+    });
+    if (!order.length) return String(md || "");
+    return (sections[code] || sections.en || sections[order[0]]).filter(function (l) { return !/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(l); }).join("\n");
+  }
   /** Release notes are Markdown: lists become lists, headings and bold become plain text. */
   function notesHtml(md) {
     var out = "", inList = false;
@@ -709,7 +724,7 @@
       var v = String(r.tag_name).replace(/^v/i, ""), date = "";
       try { date = new Date(r.published_at).toLocaleDateString(cur === "no" ? "nb-NO" : cur, { year: "numeric", month: "long", day: "numeric" }); } catch (e) {}
       return '<div class="rel"><h3>' + escapeHtml(t.version.replace(/<[^>]+>/g, "").split("·")[0].replace("{v}", v).trim()) + (i === 0 ? ' <span class="new">' + t.latestTag + "</span>" : "") +
-        '</h3><div class="date">' + escapeHtml(date) + "</div>" + notesHtml(r.body) + "</div>";
+        '</h3><div class="date">' + escapeHtml(date) + "</div>" + notesHtml(notesFor(r.body, cur)) + "</div>";
     }).join("");
   }
   fetch("https://api.github.com/repos/" + owner + "/" + repo + "/releases?per_page=10")

@@ -34,6 +34,11 @@ import no.srrlsm.speechsplit.jvm.DocumentReader
 import no.srrlsm.speechsplit.core.AppController
 import no.srrlsm.speechsplit.core.ReleaseInfo
 import no.srrlsm.speechsplit.core.ThemeMode
+import no.srrlsm.speechsplit.core.SPEECH_FILE_MIME
+import android.content.ClipData
+import android.content.ClipboardManager
+import androidx.core.content.FileProvider
+import java.io.File
 import no.srrlsm.speechsplit.platform.AndroidPlatform
 import no.srrlsm.speechsplit.platform.AndroidStore
 import no.srrlsm.speechsplit.ui.LocalUiActions
@@ -69,6 +74,15 @@ class MainActivity : ComponentActivity(), UiActions {
 
     private val openDocument =
         registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(::importUri) }
+
+    /** "Save as file": the system's file picker, where Google Drive, OneDrive and this device show up. */
+    private var pendingSaveText: String? = null
+    private val createDocument =
+        registerForActivityResult(ActivityResultContracts.CreateDocument(SPEECH_FILE_MIME)) { uri ->
+            val text = pendingSaveText
+            pendingSaveText = null
+            if (uri != null && text != null) writeToUri(uri, text)
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -202,6 +216,77 @@ class MainActivity : ComponentActivity(), UiActions {
         }
     }
 
+    override val canSaveFiles: Boolean get() = true
+
+    override fun saveFile(fileName: String, mimeType: String, text: String) {
+        pendingSaveText = text
+        try {
+            createDocument.launch(fileName)
+        } catch (e: Exception) {
+            pendingSaveText = null
+            toast(vm.app.strings.saveFailed)
+        }
+    }
+
+    private fun writeToUri(uri: Uri, text: String) {
+        lifecycleScope.launch {
+            val ok = withContext(Dispatchers.IO) {
+                runCatching {
+                    contentResolver.openOutputStream(uri, "wt")?.use { it.write(text.toByteArray()) } != null
+                }.getOrDefault(false)
+            }
+            if (!ok) {
+                toast(vm.app.strings.saveFailed)
+                return@launch
+            }
+            val name = runCatching {
+                contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
+                    if (c.moveToFirst()) c.getString(0) else null
+                }
+            }.getOrNull() ?: uri.lastPathSegment ?: ""
+            toast(vm.app.strings.savedFile(name))
+        }
+    }
+
+    override val canSendFiles: Boolean get() = true
+
+    /** Shares the speech as a real file, so email, Quick Share, Bluetooth or Drive get a .speechsplit file. */
+    override fun sendFile(fileName: String, mimeType: String, text: String, chooserTitle: String) {
+        lifecycleScope.launch {
+            val uri = withContext(Dispatchers.IO) {
+                runCatching {
+                    val dir = File(cacheDir, "exports").apply { mkdirs() }
+                    dir.listFiles()?.forEach { it.delete() } // only ever the latest one
+                    val file = File(dir, fileName).apply { writeText(text) }
+                    FileProvider.getUriForFile(this@MainActivity, "$packageName.files", file)
+                }.getOrNull()
+            }
+            if (uri == null) {
+                toast(vm.app.strings.saveFailed)
+                return@launch
+            }
+            val send = Intent(Intent.ACTION_SEND).apply {
+                type = mimeType
+                putExtra(Intent.EXTRA_STREAM, uri)
+                putExtra(Intent.EXTRA_SUBJECT, fileName.substringBeforeLast('.'))
+                clipData = ClipData.newRawUri(fileName, uri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            try {
+                startActivity(Intent.createChooser(send, chooserTitle))
+            } catch (e: Exception) {
+                toast(vm.app.strings.saveFailed)
+            }
+        }
+    }
+
+    override fun copyText(text: String) {
+        val clipboard = getSystemService(ClipboardManager::class.java)
+        clipboard?.setPrimaryClip(ClipData.newPlainText("Speech Split", text))
+        // Android 13+ shows its own "Copied" message
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) toast(vm.app.strings.copiedToClipboard)
+    }
+
     override fun share(text: String, chooserTitle: String) {
         val send = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
@@ -261,6 +346,10 @@ class MainActivity : ComponentActivity(), UiActions {
             "application/vnd.oasis.opendocument.text",
             "application/rtf",
             "text/*",
+            // Saved speeches (.speechsplit). Cloud drives often report unknown files as octet-stream.
+            SPEECH_FILE_MIME,
+            "application/json",
+            "application/octet-stream",
         )
     }
 }

@@ -336,7 +336,7 @@
       if (!isZip) return null;
     }
     if (ext === "odt" || isZip) { var o = await readOdt(bytes); return o ? { kind: "blocks", blocks: o } : null; }
-    var looksText = ["txt", "text", "md", "markdown", "rtf", "json"].indexOf(ext) >= 0 ||
+    var looksText = ["txt", "text", "md", "markdown", "rtf", "json", "speechsplit"].indexOf(ext) >= 0 ||
       bytes.subarray(0, 4096).every(function (b) { return b >= 9 && !(b > 13 && b < 32); });
     if (!looksText) return null;
     var text = decodeText(bytes);

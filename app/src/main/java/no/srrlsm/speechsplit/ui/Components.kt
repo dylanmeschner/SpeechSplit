@@ -65,6 +65,20 @@ interface UiActions {
     /** Opens the file picker; the chosen file goes to AppController.importDocument. */
     fun pickDocument() {}
 
+    /** Whether this platform can save a file where the user chooses (Drive, OneDrive, this device). */
+    val canSaveFiles: Boolean get() = false
+
+    /** Asks where to save, then writes [text] there. Reports the result with a toast. */
+    fun saveFile(fileName: String, mimeType: String, text: String) {}
+
+    /** Whether this platform can send a file through a share sheet (email, Quick Share...). */
+    val canSendFiles: Boolean get() = false
+
+    fun sendFile(fileName: String, mimeType: String, text: String, chooserTitle: String) {}
+
+    /** Puts [text] on the clipboard. */
+    fun copyText(text: String) = share(text, "")
+
     /** Opens the email app with a ready-made message. */
     fun sendEmail(to: String, subject: String, body: String) {
         openUrl("mailto:$to?subject=${urlEncode(subject)}&body=${urlEncode(body)}")
@@ -84,6 +98,9 @@ fun urlEncode(text: String): String = buildString {
 val LocalUiActions = staticCompositionLocalOf<UiActions> { error("UiActions not provided") }
 val LocalStrings = staticCompositionLocalOf { EnglishStrings }
 val LocalSettings = staticCompositionLocalOf { AppSettings() }
+
+/** True when the window is wide enough for the list and the speech side by side (PC, tablet landscape). */
+val LocalWideLayout = staticCompositionLocalOf { false }
 
 // AppBackHandler (system back button) is defined per platform:
 // Android: platform/AndroidBack.kt. Desktop: desktop module.

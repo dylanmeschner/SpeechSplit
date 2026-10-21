@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Speech files handed to other apps with "Send file" (cache/exports, cleared by the system) -->
+<paths>
+    <cache-path name="exports" path="exports/" />
+</paths>

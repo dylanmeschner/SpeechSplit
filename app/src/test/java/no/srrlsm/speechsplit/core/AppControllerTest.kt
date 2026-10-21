@@ -118,4 +118,41 @@ class AppControllerTest {
         assertEquals(1, app.visiblePlans.size)
         assertTrue(app.visiblePlans[0].createdAtEpochMs > 0)
     }
+
+    @Test
+    fun addSegmentGoesAfterTheGivenOne() {
+        val app = AppController(MemoryStore(listOf(plan("A"))), FakePlatform(), CoroutineScope(Job()))
+        app.editPlan(app.speechPlans.first())
+        val first = app.addSegment()          // at the end
+        val middle = app.addSegment(0)        // right after the first
+        assertEquals(listOf(1, 2), listOf(middle, first).map { id -> app.activePlan!!.segments.indexOfFirst { it.id == id } })
+    }
+
+    @Test
+    fun leavingTheEditorWithChangesAsksFirst() {
+        val app = AppController(MemoryStore(listOf(plan("A"), plan("B"))), FakePlatform(), CoroutineScope(Job()))
+        val b = app.speechPlans.first { it.title == "B" }
+        app.editPlan(app.speechPlans.first { it.title == "A" })
+        app.guardEdits { app.openPlan(b) }                 // nothing changed yet: goes right away
+        assertEquals(AppScreen.READY, app.currentScreen)
+        app.editActivePlan()
+        app.updateActivePlan { it.copy(title = "B2") }
+        app.guardEdits { app.backToLibrary() }
+        assertEquals(AppScreen.EDIT, app.currentScreen)    // waits for an answer
+        assertTrue(app.pendingLeave != null)
+        app.cancelLeave()
+        assertEquals(AppScreen.EDIT, app.currentScreen)
+        app.guardEdits { app.backToLibrary() }
+        app.confirmLeave()
+        assertEquals(AppScreen.LIBRARY, app.currentScreen)
+        assertEquals("B", app.speechPlans.first { it.id == b.id }.title) // not saved
+    }
+
+    @Test
+    fun speechFileNamesAreSafe() {
+        assertEquals("Wedding toast.speechsplit", speechFileName("Wedding toast"))
+        assertEquals("A B C.speechsplit", speechFileName("A/B:C?"))
+        assertEquals("Speech.speechsplit", speechFileName("  ...  "))
+        assertEquals("Tale for Ørjan.speechsplit", speechFileName("Tale for Ørjan"))
+    }
 }

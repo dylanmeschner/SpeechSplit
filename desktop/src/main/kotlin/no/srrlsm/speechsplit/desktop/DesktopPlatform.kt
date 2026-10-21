@@ -11,6 +11,7 @@ import no.srrlsm.speechsplit.core.ReleaseInfo
 import no.srrlsm.speechsplit.jvm.UpdateClient
 import no.srrlsm.speechsplit.core.PracticeRun
 import no.srrlsm.speechsplit.core.SpeechPlan
+import no.srrlsm.speechsplit.core.SpeechFile
 import no.srrlsm.speechsplit.core.Strings
 import no.srrlsm.speechsplit.core.TimeStatus
 import no.srrlsm.speechsplit.jvm.JsonCodec
@@ -21,6 +22,9 @@ import java.nio.file.StandardCopyOption
 import java.text.DateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 /** Where the app keeps its data: %APPDATA%\Speech Split on Windows. */
 fun appDataDir(): File {
@@ -63,6 +67,14 @@ class DesktopStore(private val dir: File = appDataDir()) : AppStore {
 
     override fun exportPlan(plan: SpeechPlan): String = JsonCodec.planToJson(plan, includeIds = false).toString()
 
+    override fun exportPlanFile(plan: SpeechPlan, runs: List<PracticeRun>): String = JsonCodec.planFileText(plan, runs)
+
+    override fun exportLibraryFile(plans: List<SpeechPlan>, runs: List<PracticeRun>): String =
+        JsonCodec.libraryFileText(plans, runs)
+
+    override fun readSpeechFile(text: String, fallbackTitle: String): SpeechFile? =
+        JsonCodec.readSpeechFile(text, fallbackTitle)
+
     override fun importPlan(text: String, fallbackTitle: String): SpeechPlan? = try {
         JsonCodec.planFromJson(JSONObject(text.trim()), fallbackTitle)
     } catch (e: Exception) {
@@ -75,8 +87,28 @@ class DesktopStore(private val dir: File = appDataDir()) : AppStore {
         null
     }
 
-    /** Writes to a temporary file first, so a crash mid-save never leaves a half-written file. */
+    // Saving happens on its own thread, so a slow disk, antivirus scan or cloud-synced folder
+    // can never make the window stop responding. Only the newest version of each file is written.
+    private val pending = ConcurrentHashMap<File, String>()
+    private val writer = Executors.newSingleThreadExecutor { r -> Thread(r, "SpeechSplit-save").apply { isDaemon = true } }
+
     private fun write(file: File, text: String) {
+        if (pending.put(file, text) == null) {
+            runCatching {
+                writer.execute { pending.remove(file)?.let { writeNow(file, it) } }
+            }.onFailure { pending.remove(file)?.let { writeNow(file, it) } } // closing: write right away
+        }
+    }
+
+    /** Waits (briefly) until everything is on disk. Called when the app closes. */
+    override fun flush() {
+        writer.shutdown()
+        runCatching { writer.awaitTermination(5, TimeUnit.SECONDS) }
+        pending.keys.toList().forEach { f -> pending.remove(f)?.let { writeNow(f, it) } }
+    }
+
+    /** Writes to a temporary file first, so a crash mid-save never leaves a half-written file. */
+    private fun writeNow(file: File, text: String) {
         try {
             val tmp = File(file.parentFile, file.name + ".tmp")
             tmp.writeText(text)
@@ -99,6 +131,10 @@ class DesktopPlatform : PlatformServices {
 
     override val platformName: String
         get() = "${System.getProperty("os.name")} ${System.getProperty("os.version")}"
+
+    override val diagnosticsNote: String?
+        get() = FreezeWatch.logFile.takeIf { it.exists() && it.length() > 0 }
+            ?.let { "Freeze log (please attach): ${it.absolutePath}" }
 
     /** PDF text through Apache PDFBox; Word, OpenDocument and text through the shared reader. */
     override fun readDocument(fileName: String, bytes: ByteArray): List<DocBlock>? =

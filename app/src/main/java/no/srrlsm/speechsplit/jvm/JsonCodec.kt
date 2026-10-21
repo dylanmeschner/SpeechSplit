@@ -8,6 +8,7 @@ import no.srrlsm.speechsplit.core.PracticeRun
 import no.srrlsm.speechsplit.core.RunSegment
 import no.srrlsm.speechsplit.core.SpeechPlan
 import no.srrlsm.speechsplit.core.SpeechSegment
+import no.srrlsm.speechsplit.core.SpeechFile
 import no.srrlsm.speechsplit.core.SpeechSort
 import no.srrlsm.speechsplit.core.ThemeMode
 import no.srrlsm.speechsplit.core.WarningOptions
@@ -66,6 +67,46 @@ object JsonCodec {
             lastUsedAtEpochMs = obj.optLong("lastUsedAt", 0L).coerceAtLeast(0L),
             archived = obj.optBoolean("archived", false),
         )
+    }
+
+    /**
+     * A .speechsplit file with one speech: the shareable export, indented, with a marker saying
+     * what it is. With history, the ids are kept so each run can find its segments again.
+     */
+    fun planFileText(plan: SpeechPlan, runs: List<PracticeRun> = emptyList()): String {
+        val o = JSONObject().put("app", "Speech Split").put("format", 1)
+        if (runs.isNotEmpty()) o.put("id", plan.id)
+        o.put("title", plan.title)
+        o.put("segments", planToJson(plan, includeIds = runs.isNotEmpty()).getJSONArray("segments"))
+        if (runs.isNotEmpty()) o.put("history", JSONArray().apply { runs.forEach { put(runToJson(it)) } })
+        return o.toString(2) + "\n"
+    }
+
+    /** A .speechsplit library backup: every speech (archived ones too) and all practice history. */
+    fun libraryFileText(plans: List<SpeechPlan>, runs: List<PracticeRun>): String =
+        JSONObject()
+            .put("app", "Speech Split")
+            .put("format", 1)
+            .put("kind", "library")
+            .put("speeches", JSONArray().apply { plans.forEach { put(planToJson(it, includeIds = true)) } })
+            .put("history", JSONArray().apply { runs.forEach { put(runToJson(it)) } })
+            .toString(2) + "\n"
+
+    /** Reads any Speech Split file or export text. Null if it isn't one. */
+    fun readSpeechFile(text: String, fallbackTitle: String): SpeechFile? {
+        val o = runCatching { JSONObject(text.trim()) }.getOrNull() ?: return null
+        val runs = o.optJSONArray("history")?.let { arr ->
+            (0 until arr.length()).mapNotNull { i -> runCatching { runFromJson(arr.getJSONObject(i)) }.getOrNull() }
+        } ?: emptyList()
+        if (o.optString("kind") == "library" || o.has("speeches")) {
+            val arr = o.optJSONArray("speeches") ?: return null
+            val plans = (0 until arr.length()).mapNotNull { i ->
+                runCatching { planFromJson(arr.getJSONObject(i), fallbackTitle) }.getOrNull()
+            }.distinctBy { it.id }
+            return SpeechFile(plans, runs, isLibrary = true)
+        }
+        val plan = runCatching { planFromJson(o, fallbackTitle) }.getOrNull() ?: return null
+        return SpeechFile(listOf(plan), runs, isLibrary = false)
     }
 
     fun runToJson(run: PracticeRun): JSONObject = JSONObject().apply {

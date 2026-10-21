@@ -97,6 +97,14 @@ class AppController(
 
     val strings: Strings get() = stringsFor(settings.language, platform.systemLanguage)
 
+    /** "en", "de" or "no": which part of the patch notes to show. */
+    val languageCode: String
+        get() = when (settings.language.resolve(platform.systemLanguage)) {
+            AppLanguage.GERMAN -> "de"
+            AppLanguage.NORWEGIAN -> "no"
+            else -> "en"
+        }
+
     val canVibrate: Boolean get() = platform.canVibrate
     val supportsWatchAlerts: Boolean get() = platform.supportsWatchAlerts
     val supportsDnd: Boolean get() = platform.supportsDnd
@@ -124,6 +132,29 @@ class AppController(
 
     val hasUnsavedEdits: Boolean
         get() = currentScreen == AppScreen.EDIT && activePlan != editOriginal
+
+    /**
+     * Something the user asked for that would leave the editor with unsaved changes
+     * (wide layout: the speech list stays visible next to the editor). The UI asks first.
+     */
+    var pendingLeave by mutableStateOf<(() -> Unit)?>(null)
+        private set
+
+    /** Runs [action] now, or after the user agrees to discard unsaved edits. */
+    fun guardEdits(action: () -> Unit) {
+        if (hasUnsavedEdits) pendingLeave = action else action()
+    }
+
+    fun confirmLeave() {
+        val action = pendingLeave ?: return
+        pendingLeave = null
+        editOriginal = null
+        action()
+    }
+
+    fun cancelLeave() {
+        pendingLeave = null
+    }
 
     fun setSort(sort: SpeechSort) = updateSettings { it.copy(speechSort = sort) }
 
@@ -204,8 +235,14 @@ class AppController(
         p.copy(segments = p.segments.map { if (it.id == id) transform(it) else it })
     }
 
-    fun addSegment() = updateActivePlan {
-        it.copy(segments = it.segments + SpeechSegment(title = strings.defaultNewSegment, targetSeconds = 120))
+    /** Adds a segment after [afterIndex] (default: at the end) and returns its id, so the editor can focus it. */
+    fun addSegment(afterIndex: Int? = null): String {
+        val seg = SpeechSegment(title = strings.defaultNewSegment, targetSeconds = 120)
+        updateActivePlan { p ->
+            val at = ((afterIndex ?: p.segments.lastIndex) + 1).coerceIn(0, p.segments.size)
+            p.copy(segments = p.segments.toMutableList().apply { add(at, seg) })
+        }
+        return seg.id
     }
 
     fun removeSegment(id: String) = updateActivePlan { p ->
@@ -238,7 +275,11 @@ class AppController(
     }
 
     /** Hides a speech from the list. Its history is kept, and it can be restored from the archive. */
-    fun archivePlan(plan: SpeechPlan) = replacePlan(plan.id) { it.copy(archived = true) }
+    fun archivePlan(plan: SpeechPlan) {
+        replacePlan(plan.id) { it.copy(archived = true) }
+        // Wide layout: the archived speech may be open next to the list
+        if (activePlan?.id == plan.id && (currentScreen == AppScreen.READY || currentScreen == AppScreen.HISTORY)) backToLibrary()
+    }
 
     fun restorePlan(plan: SpeechPlan) = replacePlan(plan.id) { it.copy(archived = false) }
 
@@ -252,23 +293,106 @@ class AppController(
 
     fun exportPlan(plan: SpeechPlan): String = store.exportPlan(plan)
 
-    /** Imports a speech exported from Speech Split (any version, any platform). */
+    /**
+     * File name and contents for "Export": one speech, one speech with its practice history,
+     * or the whole library (all speeches, the archive and all history). [plan] may be null for LIBRARY.
+     */
+    fun exportFile(plan: SpeechPlan?, scope: ExportScope): Pair<String, String> = when {
+        scope == ExportScope.LIBRARY || plan == null ->
+            "Speech Split ${isoDate(platform.epochMs())}.$SPEECH_FILE_EXTENSION" to
+                store.exportLibraryFile(speechPlans.toList(), runs)
+        scope == ExportScope.SPEECH_WITH_HISTORY -> speechFileName(plan.title) to store.exportPlanFile(plan, runsFor(plan.id))
+        else -> speechFileName(plan.title) to store.exportPlanFile(plan)
+    }
+
+    /**
+     * Imports a Speech Split file or export text (any version, any platform). A single speech is
+     * added right away (with its history, if the file has it). A library backup waits in
+     * [pendingLibrary] until the user picks "add" or "replace". Returns false if it isn't one.
+     */
     fun importPlan(text: String): Boolean {
-        val plan = store.importPlan(text, strings.importedSpeech) ?: return false
-        if (plan.segments.isEmpty()) return false
-        // Fresh ids, so importing the same speech twice gives two independent copies
-        speechPlans.add(
-            plan.copy(
-                id = newId(),
-                segments = plan.segments.map { it.copy(id = newId()) },
-                createdAtEpochMs = platform.epochMs(),
-                lastUsedAtEpochMs = 0L,
-                archived = false,
-            )
-        )
-        store.savePlans(speechPlans)
+        val file = store.readSpeechFile(text, strings.importedSpeech) ?: return false
+        if (file.isLibrary) {
+            if (file.plans.isEmpty()) return false
+            pendingLibrary = file
+            return true
+        }
+        val plan = file.plans.firstOrNull()?.takeIf { it.segments.isNotEmpty() } ?: return false
+        addCopy(plan, file.runs)
+        message = strings.imported
         return true
     }
+
+    /** Fresh ids, so importing the same speech twice gives two independent copies. History follows along. */
+    private fun addCopy(plan: SpeechPlan, history: List<PracticeRun>) {
+        val segIds = plan.segments.associate { it.id to newId() }
+        val copy = plan.copy(
+            id = newId(),
+            segments = plan.segments.map { it.copy(id = segIds[it.id] ?: newId()) },
+            createdAtEpochMs = platform.epochMs(),
+            lastUsedAtEpochMs = history.maxOfOrNull { it.finishedAtEpochMs } ?: 0L,
+            archived = false,
+        )
+        speechPlans.add(copy)
+        store.savePlans(speechPlans)
+        if (history.isNotEmpty()) {
+            val moved = history.map { r ->
+                r.copy(
+                    id = newId(),
+                    planId = copy.id,
+                    planTitle = copy.title,
+                    segments = r.segments.map { s -> s.copy(segmentId = segIds[s.segmentId] ?: s.segmentId) },
+                )
+            }
+            runs = capRuns(runs + moved)
+            store.saveRuns(runs)
+        }
+    }
+
+    /** A library backup that was opened, waiting for "add" or "replace". */
+    var pendingLibrary by mutableStateOf<SpeechFile?>(null)
+        private set
+
+    fun dismissLibrary() {
+        pendingLibrary = null
+    }
+
+    /**
+     * Add: speeches that aren't on this device yet are added with their history, plus any runs of
+     * shared speeches this device doesn't have. Nothing here is changed or removed.
+     * Replace: everything here (speeches, archive, history) becomes exactly the backup.
+     */
+    fun applyLibrary(replace: Boolean) {
+        val file = pendingLibrary ?: return
+        pendingLibrary = null
+        val count: Int
+        if (replace) {
+            backToLibrary()
+            speechPlans.clear()
+            speechPlans.addAll(file.plans)
+            val ids = file.plans.map { it.id }.toSet()
+            runs = capRuns(file.runs.filter { it.planId in ids })
+            count = file.plans.size
+        } else {
+            val have = speechPlans.map { it.id }.toSet()
+            val added = file.plans.filter { it.id !in have }
+            speechPlans.addAll(added)
+            val ids = speechPlans.map { it.id }.toSet()
+            val haveRuns = runs.map { it.id }.toSet()
+            runs = capRuns(runs + file.runs.filter { it.id !in haveRuns && it.planId in ids })
+            count = added.size
+        }
+        store.savePlans(speechPlans)
+        store.saveRuns(runs)
+        message = strings.importedCount(count)
+    }
+
+    /** Newest first, at most [MaxRunsPerPlan] per speech. */
+    private fun capRuns(list: List<PracticeRun>): List<PracticeRun> =
+        list.distinctBy { it.id }
+            .sortedByDescending { it.finishedAtEpochMs }
+            .groupBy { it.planId }.values.flatMap { it.take(MaxRunsPerPlan) }
+            .sortedByDescending { it.finishedAtEpochMs }
 
     // --- Importing a document (PDF, Word, text) ------------------------------------
     /** A read document waiting for the user to look at the suggested segments. */
@@ -288,10 +412,7 @@ class AppController(
      * speech itself, and segments are suggested. Returns false if there's nothing to work with.
      */
     fun importText(text: String): Boolean {
-        if (importPlan(text)) {
-            message = strings.imported
-            return true
-        }
+        if (importPlan(text)) return true
         val blocks = blocksFromPlainText(text)
         if (blocks.none { !it.heading && countWords(it.text) > 0 }) return false
         importDraft = ImportDraft(title = guessTitle(blocks, strings.importedSpeech), blocks = blocks)
@@ -303,10 +424,7 @@ class AppController(
         if (importBusy) return
         // A file exported from Speech Split is plain JSON: import it directly
         val asText = bytes.takeIf { it.size < 1_000_000 }?.decodeToString()?.trim()
-        if (asText != null && asText.startsWith("{") && importPlan(asText)) {
-            message = strings.imported
-            return
-        }
+        if (asText != null && asText.removePrefix("\uFEFF").startsWith("{") && importPlan(asText.removePrefix("\uFEFF"))) return
         importBusy = true
         scope.launch {
             val blocks = try {
@@ -535,7 +653,8 @@ class AppController(
             FeedbackKind.OTHER -> s.feedbackOther
         }
         val subject = "Speech Split: $label"
-        val body = "${s.feedbackDescribe}\n\n\n\n---\nSpeech Split $appVersion · ${platform.platformName}"
+        val diagnostics = platform.diagnosticsNote?.let { "\n$it" } ?: ""
+        val body = "${s.feedbackDescribe}\n\n\n\n---\nSpeech Split $appVersion · ${platform.platformName}$diagnostics"
         return Triple(FEEDBACK_EMAIL, subject, body)
     }
 
@@ -543,6 +662,7 @@ class AppController(
     fun dispose() {
         ticker?.cancel()
         if (dndOnByUs) platform.setDnd(false)
+        store.flush()
     }
 
     private fun afterChange() {

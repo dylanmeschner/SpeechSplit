@@ -7,7 +7,7 @@
 // ============================================================================
 (function () {
   "use strict";
-  var APP_VERSION = "2.2";
+  var APP_VERSION = "2.3";
   var REPO = "dylanmeschner/SpeechSplit";
   var SITE = "https://dylanmeschner.github.io/SpeechSplit/";
   var RELEASES = "https://github.com/" + REPO + "/releases";
@@ -25,6 +25,7 @@
     more: "M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z",
     sort: "M3 18h6v-2H3v2zM3 6v2h18V6H3zm0 7h12v-2H3v2z",
     download: "M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z",
+    upload: "M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z",
     edit: "M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z",
     share: "M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z",
     archive: "M20.54 5.23l-1.39-1.68C18.88 3.21 18.47 3 18 3H6c-.47 0-.88.21-1.16.55L3.46 5.23C3.17 5.57 3 6.02 3 6.5V19c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6.5c0-.48-.17-.93-.46-1.27zM12 17.5L6.5 12H10v-2h4v2h3.5L12 17.5zM5.12 5l.81-1h12l.94 1H5.12z",
@@ -129,6 +130,10 @@
   // Texts with numbers in them (functions in the app's Strings.kt)
   var F = {
     en: {
+      runsCount: function (n) { return n + " practice run" + (n === 1 ? "" : "s"); },
+      libraryDesc: function (n, r) { return n + " speech" + (n === 1 ? "" : "es") + " (archive included) and " + r + " practice run" + (r === 1 ? "" : "s"); },
+      importLibraryText: function (n, r) { return "This backup has " + n + " speech" + (n === 1 ? "" : "es") + " and " + r + " practice run" + (r === 1 ? "" : "s") + ". Add what's missing in this browser, or replace everything here with the backup?"; },
+      importedCount: function (n) { return n === 1 ? "1 speech imported" : n + " speeches imported"; },
       summary: function (n, tt) { return n + " segment" + (n === 1 ? "" : "s") + " · " + tt + " total"; },
       deleteTitle: function (x) { return "Delete “" + x + "”?"; }, segmentLabel: function (i) { return "Segment " + i; },
       totalPlan: function (x) { return "TOTAL · PLAN " + x; }, nowOf: function (i, n) { return "NOW · " + i + " OF " + n; },
@@ -143,6 +148,10 @@
       part: function (i) { return "Part " + i; }, words: function (n) { return n + " words"; },
     },
     de: {
+      runsCount: function (n) { return n + (n === 1 ? " Übungsdurchgang" : " Übungsdurchgänge"); },
+      libraryDesc: function (n, r) { return n + (n === 1 ? " Rede" : " Reden") + " (mit Archiv) und " + r + (r === 1 ? " Übungsdurchgang" : " Übungsdurchgänge"); },
+      importLibraryText: function (n, r) { return "Diese Sicherung enthält " + n + (n === 1 ? " Rede" : " Reden") + " und " + r + (r === 1 ? " Übungsdurchgang" : " Übungsdurchgänge") + ". Fehlendes in diesem Browser ergänzen oder hier alles durch die Sicherung ersetzen?"; },
+      importedCount: function (n) { return n === 1 ? "1 Rede importiert" : n + " Reden importiert"; },
       summary: function (n, tt) { return n + " " + (n === 1 ? "Abschnitt" : "Abschnitte") + " · " + tt + " gesamt"; },
       deleteTitle: function (x) { return "„" + x + "“ löschen?"; }, segmentLabel: function (i) { return "Abschnitt " + i; },
       totalPlan: function (x) { return "GESAMT · PLAN " + x; }, nowOf: function (i, n) { return "JETZT · " + i + " VON " + n; },
@@ -157,6 +166,10 @@
       part: function (i) { return "Teil " + i; }, words: function (n) { return n + " Wörter"; },
     },
     no: {
+      runsCount: function (n) { return n + (n === 1 ? " øvingsrunde" : " øvingsrunder"); },
+      libraryDesc: function (n, r) { return n + (n === 1 ? " tale" : " taler") + " (arkivet også) og " + r + (r === 1 ? " øvingsrunde" : " øvingsrunder"); },
+      importLibraryText: function (n, r) { return "Denne sikkerhetskopien har " + n + (n === 1 ? " tale" : " taler") + " og " + r + (r === 1 ? " øvingsrunde" : " øvingsrunder") + ". Vil du legge til det som mangler i denne nettleseren, eller erstatte alt her med sikkerhetskopien?"; },
+      importedCount: function (n) { return n === 1 ? "1 tale importert" : n + " taler importert"; },
       summary: function (n, tt) { return n + " " + (n === 1 ? "del" : "deler") + " · " + tt + " totalt"; },
       deleteTitle: function (x) { return "Slette «" + x + "»?"; }, segmentLabel: function (i) { return "Del " + i; },
       totalPlan: function (x) { return "TOTALT · PLAN " + x; }, nowOf: function (i, n) { return "NÅ · " + i + " AV " + n; },
@@ -450,6 +463,67 @@
   function exportText(p) {
     return JSON.stringify({ title: p.title, segments: p.segments.map(function (s) { return { title: s.title, target: s.targetSeconds }; }) });
   }
+  // --- Export as a .speechsplit file (same format as the apps' "Export") --------------
+  // One speech, one speech with its history, or the whole library (speeches, archive, history).
+  var SPEECH_MIME = "application/vnd.speechsplit+json";
+  function speechFileName(title) {
+    var base = String(title || "").replace(/[\\/:*?"<>|\u0000-\u001f]/g, " ").replace(/\s+/g, " ").trim().replace(/\.+$/, "").slice(0, 60).trim();
+    return (base || "Speech") + ".speechsplit";
+  }
+  function planToFile(p, withIds) {
+    var o = {};
+    if (withIds) { o.id = p.id; if (p.createdAt) o.createdAt = p.createdAt; if (p.lastUsedAt) o.lastUsedAt = p.lastUsedAt; if (p.archived) o.archived = true; }
+    o.title = p.title;
+    o.segments = p.segments.map(function (s) { var x = { title: s.title, target: s.targetSeconds }; if (withIds) x.id = s.id; return x; });
+    return o;
+  }
+  /** scope: "speech" | "history" | "library". Returns { name, text }. */
+  function exportFile(p, scope) {
+    var o;
+    if (scope === "library" || !p) {
+      o = { app: "Speech Split", format: 1, kind: "library", speeches: data.plans.map(function (x) { return planToFile(x, true); }), history: data.runs };
+      return { name: "Speech Split " + new Date().toISOString().slice(0, 10) + ".speechsplit", text: JSON.stringify(o, null, 2) + "\n" };
+    }
+    var withHistory = scope === "history";
+    var pf = planToFile(p, withHistory);
+    o = { app: "Speech Split", format: 1 };
+    Object.keys(pf).forEach(function (k) { if (k !== "createdAt" && k !== "lastUsedAt" && k !== "archived") o[k] = pf[k]; });
+    if (withHistory) o.history = runsFor(p.id);
+    return { name: speechFileName(p.title), text: JSON.stringify(o, null, 2) + "\n" };
+  }
+  function asFile(x) { try { return new File([x.text], x.name, { type: SPEECH_MIME }); } catch (e) { return null; } }
+  function canShareFiles() {
+    try { var f = asFile({ name: "a.speechsplit", text: "{}" }); return !!(f && navigator.canShare && navigator.canShare({ files: [f] })); } catch (e) { return false; }
+  }
+  function downloadFile(x) {
+    var url = URL.createObjectURL(new Blob([x.text], { type: SPEECH_MIME }));
+    var a = document.createElement("a"); a.href = url; a.download = x.name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 10000);
+    toast(t("savedFileWeb"));
+  }
+  /** p null: opened from the library header, so only "whole library" is offered. */
+  function exportDialog(p) {
+    var runs = p ? runsFor(p.id).length : 0;
+    var scope = p ? "speech" : "library";
+    var opt = function (key, title, desc, disabled) {
+      return '<button class="choice" data-scope="' + key + '"' + (disabled ? " disabled style=\"opacity:.45;cursor:default\"" : "") + '><span class="radio"></span><span><b>' + esc(title) +
+        '</b><br><span class="sub small">' + esc(desc) + "</span></span></button>";
+    };
+    var body = (p ? opt("speech", t("exportThisSpeech"), p.title) + opt("history", t("exportWithHistory"), f("runsCount")(runs), !runs) : "") +
+      opt("library", t("exportLibrary"), f("libraryDesc")(data.plans.length, data.runs.length)) +
+      '<p class="sub small" style="margin:12px 0 0">' + esc(t("exportNoteWeb")) + "</p>";
+    var actions = [{ label: t("cancel"), cls: "tbtn" }];
+    if (canShareFiles()) actions.push({ label: t("shareAction"), cls: "tbtn", onClick: function () {
+      var x = exportFile(p, scope); closeDialog();
+      navigator.share({ files: [asFile(x)], title: x.name }).catch(function () {});
+    } });
+    actions.push({ label: t("export"), onClick: function () { var x = exportFile(p, scope); closeDialog(); downloadFile(x); } });
+    var d = dialog({ title: t("exportChooser"), noFocus: true, body: body, actions: actions });
+    function sync() { d.querySelectorAll("[data-scope]").forEach(function (b) { b.querySelector(".radio").classList.toggle("on", b.dataset.scope === scope); }); }
+    d.querySelectorAll("[data-scope]").forEach(function (b) { b.onclick = function () { if (!b.disabled) { scope = b.dataset.scope; sync(); } }; });
+    sync();
+  }
   function share(text, title) {
     if (navigator.share) { navigator.share({ title: title, text: text }).catch(function () {}); return; }
     copy(text, t("copiedToClipboard"));
@@ -460,19 +534,77 @@
       try { document.execCommand("copy"); toast(msg); } catch (e) {} ta.remove();
     });
   }
-  /** An exported speech (JSON from any version of Speech Split). */
+  /** Any Speech Split file or export text: one speech (maybe with history) or a library backup. */
+  function planFromFile(o, keepIds) {
+    return { id: keepIds && o.id ? String(o.id) : newId(), title: String(o.title || "").trim() || t("importedSpeech"),
+      createdAt: keepIds && o.createdAt ? +o.createdAt : Date.now(), lastUsedAt: keepIds && o.lastUsedAt ? +o.lastUsedAt : 0, archived: keepIds && !!o.archived,
+      segments: (o.segments || []).map(function (s) { return { id: keepIds && s.id ? String(s.id) : newId(), title: String(s.title || ""), targetSeconds: Math.max(0, parseInt(s.target, 10) || 0), _old: s.id }; }) };
+  }
+  function cleanRuns(list) {
+    return (Array.isArray(list) ? list : []).filter(function (r) { return r && r.planId && Array.isArray(r.segments) && r.finishedAt; });
+  }
+  /** Newest first, at most MAX_RUNS per speech. */
+  function capRuns(list) {
+    var seen = {}, per = {};
+    return list.slice().sort(function (a, b) { return b.finishedAt - a.finishedAt; }).filter(function (r) {
+      if (seen[r.id]) return false; seen[r.id] = 1;
+      per[r.planId] = (per[r.planId] || 0) + 1; return per[r.planId] <= MAX_RUNS;
+    });
+  }
   function importPlanText(text) {
-    try {
-      var o = JSON.parse(String(text).trim());
-      if (!o || !Array.isArray(o.segments) || !o.segments.length) return false;
-      var plan = { id: newId(), title: String(o.title || "").trim() || t("importedSpeech"), createdAt: Date.now(),
-        segments: o.segments.map(function (s) { return { id: newId(), title: String(s.title || ""), targetSeconds: Math.max(0, parseInt(s.target, 10) || 0) }; }) };
-      data.plans.push(plan); save();
-      return true;
-    } catch (e) { return false; }
+    var o;
+    try { o = JSON.parse(String(text).replace(/^\uFEFF/, "").trim()); } catch (e) { return false; }
+    if (!o || typeof o !== "object") return false;
+    if (o.kind === "library" || Array.isArray(o.speeches)) {
+      if (!Array.isArray(o.speeches) || !o.speeches.length) return false;
+      libraryDialog(o.speeches.filter(function (x) { return x && Array.isArray(x.segments); }).map(function (x) { var p = planFromFile(x, true); p.segments.forEach(function (s) { delete s._old; }); return p; }), cleanRuns(o.history));
+      return "library";
+    }
+    if (!Array.isArray(o.segments) || !o.segments.length) return false;
+    var plan = planFromFile(o, false), map = {};
+    plan.segments.forEach(function (s) { if (s._old) map[s._old] = s.id; delete s._old; });
+    var hist = cleanRuns(o.history).map(function (r) {
+      return { id: newId(), planId: plan.id, planTitle: plan.title, finishedAt: r.finishedAt,
+        segments: r.segments.map(function (x) { return { segmentId: map[x.segmentId] || x.segmentId, title: x.title, target: x.target, actual: x.actual }; }) };
+    });
+    if (hist.length) plan.lastUsedAt = Math.max.apply(null, hist.map(function (r) { return r.finishedAt; }));
+    data.plans.push(plan);
+    if (hist.length) data.runs = capRuns(data.runs.concat(hist));
+    save();
+    return true;
+  }
+  /** A library backup: add what's missing, or (after a second question) replace everything. */
+  function libraryDialog(plans, runs) {
+    var apply = function (replace) {
+      closeDialog();
+      var count;
+      if (replace) {
+        data.plans = plans;
+        var ids = {}; plans.forEach(function (p) { ids[p.id] = 1; });
+        data.runs = capRuns(runs.filter(function (r) { return ids[r.planId]; }));
+        count = plans.length;
+        ui.plan = null; ui.screen = "library";
+      } else {
+        var have = {}; data.plans.forEach(function (p) { have[p.id] = 1; });
+        var added = plans.filter(function (p) { return !have[p.id]; });
+        data.plans = data.plans.concat(added);
+        var all = {}; data.plans.forEach(function (p) { all[p.id] = 1; });
+        data.runs = capRuns(data.runs.concat(runs.filter(function (r) { return all[r.planId]; })));
+        count = added.length;
+      }
+      save(); toast(f("importedCount")(count)); render();
+    };
+    dialog({ title: t("importLibraryTitle"), body: '<p class="sub" style="margin:0">' + esc(f("importLibraryText")(plans.length, runs.length)) + "</p>",
+      actions: [{ label: t("cancel"), cls: "tbtn" },
+        { label: t("importReplace"), cls: "tbtn", onClick: function () {
+          confirmDialog(t("replaceConfirmTitle"), t("replaceConfirmText"), t("importReplace"), function () { apply(true); }, true);
+        } },
+        { label: t("importAdd"), onClick: function () { apply(false); } }] });
   }
   function importText(text) {
-    if (importPlanText(text)) { toast(t("imported")); render(); return true; }
+    var r = importPlanText(text);
+    if (r === "library") return true;
+    if (r) { toast(t("imported")); render(); return true; }
     var blocks = IM.blocksFromPlainText(text);
     if (!blocks.some(function (b) { return !b.heading && IM.countWords(b.text) > 0; })) return false;
     showSuggestion({ title: IM.guessTitle(blocks, t("importedSpeech")), blocks: blocks });
@@ -486,7 +618,7 @@
       .then(function (res) {
         ui.busy = false; render();
         if (!res) { toast(t("importUnsupported")); return; }
-        if (res.kind === "plan") { if (importPlanText(res.text)) { toast(t("imported")); render(); } else toast(t("importFailed")); return; }
+        if (res.kind === "plan") { var r = importPlanText(res.text); if (r === true) { toast(t("imported")); render(); } else if (!r) toast(t("importFailed")); return; }
         var blocks = res.blocks;
         if (!blocks.some(function (b) { return !b.heading && IM.countWords(b.text) > 0; })) { toast(t("importUnreadable")); return; }
         var fromName = (file.name || "").replace(/\.[^.]+$/, "").replace(/_/g, " ").trim();
@@ -497,7 +629,7 @@
   function pickFile() {
     var input = document.createElement("input");
     input.type = "file";
-    input.accept = ".pdf,.docx,.odt,.rtf,.txt,.md,.json,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain";
+    input.accept = ".speechsplit,.pdf,.docx,.odt,.rtf,.txt,.md,.json,application/json,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain";
     input.addEventListener("change", function () { if (input.files && input.files[0]) importFile(input.files[0]); });
     input.click();
   }
@@ -618,6 +750,7 @@
     var plans = visiblePlans(), arch = archivedPlans().length;
     var html = '<div class="page"><div class="head"><h1>' + esc(t("libraryTitle")) + "</h1>" +
       '<button class="ibtn" data-a="sort" title="' + esc(t("sortTitle")) + '" aria-label="' + esc(t("sortTitle")) + '">' + icon("sort") + "</button>" +
+      '<button class="ibtn" data-a="export-library" title="' + esc(t("exportLibrary")) + '" aria-label="' + esc(t("exportLibrary")) + '">' + icon("upload") + "</button>" +
       '<button class="ibtn" data-a="import" title="' + esc(t("importLabel")) + '" aria-label="' + esc(t("importLabel")) + '">' + icon("download") + "</button></div>";
     if (!isStandalone() && !data.settings.installHintHidden) {
       html += '<div class="banner">' + icon("install") + "<div><b>" + esc(t("installTitle")) + "</b><br>" + esc(isIos() ? t("installIos") : t("installOther")) +
@@ -715,6 +848,7 @@
     root.innerHTML = '<div class="ready"><div class="label" style="letter-spacing:.15em">' + esc(t("readyToSpeak")) + "</div><h1>" + esc(p.title) + '</h1><div class="sub">' + esc(summaryOf(p)) + "</div>" +
       '<button class="btn start" data-a="start" ' + (p.segments.length ? "" : "disabled") + ">" + icon("play") + esc(t("startTimer")) + "</button>" +
       '<div class="links"><button class="tbtn sub" data-a="edit-active">' + esc(t("edit")) + '</button><button class="tbtn sub" data-a="history">' + esc(runs ? t("history") + " (" + runs + ")" : t("history")) +
+      '</button><button class="tbtn sub" data-a="export-active">' + esc(t("export")) +
       '</button><button class="tbtn sub" data-a="back-library">' + esc(t("library")) + "</button></div></div>";
   }
 
@@ -957,10 +1091,24 @@
         box.innerHTML = list.filter(function (r) { return !r.draft && !r.prerelease; }).map(function (r) {
           var v = String(r.tag_name || "").replace(/^v/i, "");
           return '<div class="rel"><h4>' + esc(f("version")(v)) + (v === APP_VERSION ? '<span class="tag">' + esc(t("yourVersion")) + "</span>" : "") + '</h4><div class="sub small">' + esc((r.published_at || "").slice(0, 10)) +
-            "</div><p>" + esc(plainNotes(r.body || "") || t("noNotes")) + "</p></div>";
+            "</div><p>" + esc(plainNotes(notesFor(r.body || "", lang)) || t("noNotes")) + "</p></div>";
         }).join("") || esc(t("noNotes"));
       })
       .catch(function () { var box = d.querySelector(".notes"); if (box) box.textContent = t("notesFailed"); });
+  }
+  /**
+   * Release notes can have one section per language, each starting with a line like <!-- no -->
+   * (invisible on GitHub). Picks this language, then English, then the first; "---" lines are dropped.
+   */
+  function notesFor(md, code) {
+    var sections = {}, order = [], cur = null;
+    String(md).split(/\r?\n/).forEach(function (line) {
+      var m = /^\s*<!--\s*(?:lang\s*[:=]\s*)?([a-zA-Z]{2})\s*-->\s*$/.exec(line);
+      if (m) { var c = m[1].toLowerCase(); if (c === "nb" || c === "nn") c = "no"; if (!sections[c]) { sections[c] = []; order.push(c); } cur = sections[c]; return; }
+      if (cur) cur.push(line);
+    });
+    if (!order.length) return String(md);
+    return (sections[code] || sections.en || sections[order[0]]).filter(function (l) { return !/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(l); }).join("\n").trim();
   }
   function plainNotes(md) {
     return md.split("\n").map(function (l) { return l.trim().replace(/^#{1,6}\s*/, "").replace(/^[*-]\s+/, "• ").replace(/\*\*|__/g, ""); }).join("\n").replace(/\n{3,}/g, "\n\n").trim();
@@ -999,7 +1147,7 @@
       var p = planById(el.dataset.id); if (!p) return;
       menu(el, [
         { icon: "edit", text: t("edit"), onClick: function () { startEditing(p, "library"); } },
-        { icon: "share", text: t("export"), onClick: function () { copy(exportText(p), t("exportCopiedWeb")); } },
+        { icon: "share", text: t("export"), onClick: function () { exportDialog(p); } },
         { icon: "archive", text: t("archiveAction"), onClick: function () { replacePlan(p.id, function (x) { x.archived = true; return x; }); toast(t("archived")); render(); } },
         { icon: "del", text: t("delete"), onClick: function () { deleteDialog(p); } },
       ]);
@@ -1024,6 +1172,8 @@
     "save": saveEdit,
     "start": startTimer,
     "edit-active": function () { startEditing(ui.plan, "ready"); },
+    "export-active": function () { if (ui.plan) exportDialog(ui.plan); },
+    "export-library": function () { exportDialog(null); },
     "history": function () { ui.expandedRun = null; go("history"); },
     "close-history": function () { go(ui.plan ? "ready" : "library"); },
     "toggle-run": function (el) { ui.expandedRun = ui.expandedRun === el.dataset.id ? null : el.dataset.id; render(); },

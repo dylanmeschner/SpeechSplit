@@ -21,6 +21,22 @@ Change `speechSplitVersion` in `gradle.properties`. For Android, also raise `ver
 For the web version, change `APP_VERSION` in `docs/app/app.js` and `VERSION` in `docs/app/sw.js` (so browsers pick up the new files).
 
 The text you write in the GitHub release is shown as patch notes in the apps, the web version and on the website.
+Write one section per language, each starting with a marker line (invisible on GitHub); each place shows the user's
+language, falling back to English:
+
+```
+<!-- en -->
+### New
+- ...
+---
+<!-- no -->
+### Nytt
+- ...
+---
+<!-- de -->
+### Neu
+- ...
+```
 
 ## Making a release
 
@@ -40,3 +56,19 @@ The download page always links to the newest release.
 ```
 
 The web version needs no build step: open `docs/app/index.html` through any local web server, e.g. `python3 -m http.server` in the `docs` folder.
+
+## Speech files (.speechsplit)
+
+"Export" writes a `.speechsplit` file (plain JSON), in one of three kinds:
+
+- one speech: `title` and `segments` (`title`, `target` in seconds),
+- one speech with history: the same plus ids and `history` (practice runs),
+- the whole library: `"kind": "library"`, `speeches` (archive included) and `history`.
+
+Every version opens it with Import → Open a file. A library file asks: add what's missing, or replace everything.
+File type: `application/vnd.speechsplit+json`. Built in `JsonCodec` (apps) and `exportFile` in `docs/app/app.js` (web).
+
+## Freeze log (Windows/desktop)
+
+If the window stops responding for more than 2 seconds, `FreezeWatch.kt` writes what the app was doing to
+`%APPDATA%\Speech Split\freeze-log.txt`. The feedback email mentions the file when it exists.

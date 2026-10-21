@@ -8,6 +8,7 @@ import no.srrlsm.speechsplit.core.CelebrateOptions
 import no.srrlsm.speechsplit.core.ClockMode
 import no.srrlsm.speechsplit.core.PracticeRun
 import no.srrlsm.speechsplit.core.SpeechPlan
+import no.srrlsm.speechsplit.core.SpeechFile
 import no.srrlsm.speechsplit.core.SpeechSort
 import no.srrlsm.speechsplit.core.WarningOptions
 import no.srrlsm.speechsplit.core.ThemeMode
@@ -40,6 +41,14 @@ class AndroidStore(context: Context) : AppStore {
     }
 
     override fun exportPlan(plan: SpeechPlan): String = JsonCodec.planToJson(plan, includeIds = false).toString()
+
+    override fun exportPlanFile(plan: SpeechPlan, runs: List<PracticeRun>): String = JsonCodec.planFileText(plan, runs)
+
+    override fun exportLibraryFile(plans: List<SpeechPlan>, runs: List<PracticeRun>): String =
+        JsonCodec.libraryFileText(plans, runs)
+
+    override fun readSpeechFile(text: String, fallbackTitle: String): SpeechFile? =
+        JsonCodec.readSpeechFile(text, fallbackTitle)
 
     override fun importPlan(text: String, fallbackTitle: String): SpeechPlan? = try {
         JsonCodec.planFromJson(JSONObject(text.trim()), fallbackTitle)

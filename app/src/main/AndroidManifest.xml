@@ -42,8 +42,30 @@
                 <data android:mimeType="application/rtf" />
                 <data android:mimeType="text/plain" />
                 <data android:mimeType="text/markdown" />
+                <!-- A saved speech (.speechsplit) -->
+                <data android:mimeType="application/vnd.speechsplit+json" />
+                <data android:mimeType="application/json" />
+            </intent-filter>
+            <!-- A .speechsplit file opened from Google Drive or a file manager often has no known type -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:mimeType="application/octet-stream" />
             </intent-filter>
         </activity>
+
+        <!-- Lets "Send file" hand a speech file to email, Quick Share, Drive and other apps -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.files"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
 
         <!-- Switches Do Not Disturb back off if the app is swiped away mid-speech -->
         <service
