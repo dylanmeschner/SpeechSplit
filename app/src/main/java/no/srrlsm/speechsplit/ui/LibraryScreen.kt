@@ -104,6 +104,7 @@ fun LibraryScreen(app: AppController) {
     // Narrow split-screen panes: smaller heading, so the icons still fit next to it
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val narrow = maxWidth < 360.dp
+        val veryNarrow = maxWidth < 300.dp
         Column(Modifier.fillMaxSize().padding(if (narrow) 16.dp else 24.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -224,7 +225,7 @@ fun LibraryScreen(app: AppController) {
                     FitText(s3.meetingMode, maxSize = 16.sp, fontWeight = FontWeight.Medium, color = c.textMain)
                 }
             }
-            if (maxWidth < 300.dp) {
+            if (veryNarrow) {
                 quick(Modifier.fillMaxWidth())
                 Spacer(Modifier.height(8.dp))
                 meeting(Modifier.fillMaxWidth())
