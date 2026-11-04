@@ -1141,13 +1141,18 @@
     if (kind === "midweek") {
       var start = mondayIso(ui.weekOffset), w = weekFor(l, start);
       html += '<div class="card weeknav"><button class="ibtn" data-a="week-prev" aria-label="' + esc(t3("meetingPrevWeek")) + '">' + icon("left") + "</button>" +
-        "<div><b>" + esc(weekLabel(start, lang)) + '</b><div class="sub small">' + esc((w && w.reading ? w.reading + " · " : "") + (ui.weekOffset === 0 ? t3("meetingThisWeek") : "")) +
+        "<div><b>" + esc(weekLabel(start, lang)) + '</b><div class="sub small">' + esc([w && w.reading, ui.weekOffset === 0 && t3("meetingThisWeek")].filter(Boolean).join(" · ")) +
         (ui.weekOffset !== 0 ? '<button class="linkish" data-a="week-now">' + esc(t3("meetingThisWeek")) + "</button>" : "") + "</div></div>" +
         '<button class="ibtn" data-a="week-next" aria-label="' + esc(t3("meetingNextWeek")) + '">' + icon("chev") + "</button></div>";
       if (state === "loading" && !have) html += '<div class="busy"><div class="spin"></div><span>' + esc(t3("meetingLoading")) + "</span></div>";
       else if (state === "missing" && !have) html += '<p class="empty">' + esc(t3("meetingNoLanguage")) + "</p>";
       else if (state === "failed" && !have) html += '<p class="empty">' + esc(t3("meetingNoData")) + '</p><button class="btn outline" data-a="meeting-retry">' + esc(t3("meetingRetry")) + "</button>";
-      else if (!plan) html += '<p class="empty">' + esc(t3("meetingNoWeek")) + "</p>";
+      else if (!plan) {
+        // A gap between weeks that are there: no meeting that week (the Memorial, a convention)
+        var ws = (meetingData(l) || { weeks: [] }).weeks;
+        var gap = ws.some(function (x) { return x.start < start; }) && ws.some(function (x) { return x.start > start; });
+        html += '<p class="empty">' + esc(t3(gap ? "meetingNoneThisWeek" : "meetingNoWeek")) + "</p>";
+      }
       if (state === "failed" && have) html += '<p class="sub small">' + esc(t3("meetingOffline")) + "</p>";
     } else {
       html += '<p class="sub small" style="margin:12px 2px">' + esc(t3("meetingWeekendNote")) + "</p>";

@@ -35,6 +35,11 @@ S = {
         "no": "Programmet for denne uken er ikke lagt inn ennå. Det kommer noen dager etter at et nytt arbeidshefte er ute.",
         "de": "Für diese Woche gibt es noch kein Programm. Es kommt ein paar Tage nach einem neuen Arbeitsheft.",
     },
+    "meetingNoneThisWeek": {
+        "en": "The workbook has no midweek meeting this week (for example the week of the Memorial or a convention).",
+        "no": "Arbeidsheftet har ikke noe midtukemøte denne uken (for eksempel uken med minnehøytiden eller et stevne).",
+        "de": "Das Arbeitsheft hat diese Woche keine Versammlung unter der Woche (zum Beispiel in der Woche des Gedächtnismahls oder eines Kongresses).",
+    },
     "meetingLoading": {"en": "Loading the program…", "no": "Henter programmet …", "de": "Programm wird geladen …"},
     "meetingOffline": {
         "en": "Couldn't check for a newer program. Showing the saved one.",

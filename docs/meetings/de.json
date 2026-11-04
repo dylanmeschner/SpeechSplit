@@ -1,0 +1,1347 @@
+{
+ "format": 1,
+ "lang": "de",
+ "weeks": [
+  {
+   "start": "2026-11-02",
+   "reading": "Jeremia 49–50",
+   "songs": [
+    1,
+    44,
+    33
+   ],
+   "parts": [
+    {
+     "n": 1,
+     "title": "Hilf anderen, dass ihnen Jehovas Barmherzigkeit zugutekommt",
+     "min": 10
+    },
+    {
+     "n": 2,
+     "title": "Nach geistigen Schätzen graben",
+     "min": 10
+    },
+    {
+     "n": 3,
+     "title": "Bibellesung",
+     "min": 4
+    },
+    {
+     "n": 4,
+     "title": "Gespräche beginnen",
+     "min": 3
+    },
+    {
+     "n": 5,
+     "title": "Interesse fördern",
+     "min": 4
+    },
+    {
+     "n": 6,
+     "title": "Menschen zu Jüngern machen",
+     "min": 5
+    },
+    {
+     "n": 7,
+     "title": "Vergiss nie das, woran Jehova denkt",
+     "min": 15
+    },
+    {
+     "n": 8,
+     "title": "Versammlungsbibelstudium",
+     "min": 30
+    }
+   ],
+   "livingFrom": 7
+  },
+  {
+   "start": "2026-11-09",
+   "reading": "Jeremia 51–52",
+   "songs": [
+    98,
+    10,
+    150
+   ],
+   "parts": [
+    {
+     "n": 1,
+     "title": "Zedekia – ein abschreckendes Beispiel",
+     "min": 10
+    },
+    {
+     "n": 2,
+     "title": "Nach geistigen Schätzen graben",
+     "min": 10
+    },
+    {
+     "n": 3,
+     "title": "Bibellesung",
+     "min": 4
+    },
+    {
+     "n": 4,
+     "title": "Gespräche beginnen",
+     "min": 3
+    },
+    {
+     "n": 5,
+     "title": "Gespräche beginnen",
+     "min": 4
+    },
+    {
+     "n": 6,
+     "title": "Vortrag",
+     "min": 5
+    },
+    {
+     "n": 7,
+     "title": "Spenden, die den Namen Gottes ehren",
+     "min": 15
+    },
+    {
+     "n": 8,
+     "title": "Versammlungsbibelstudium",
+     "min": 30
+    }
+   ],
+   "livingFrom": 7
+  },
+  {
+   "start": "2026-11-16",
+   "reading": "Klagelieder 1–2",
+   "songs": [
+    28,
+    90,
+    75
+   ],
+   "parts": [
+    {
+     "n": 1,
+     "title": "Eine nachvollziehbare Reaktion auf einen schrecklichen Verlust",
+     "min": 10
+    },
+    {
+     "n": 2,
+     "title": "Nach geistigen Schätzen graben",
+     "min": 10
+    },
+    {
+     "n": 3,
+     "title": "Bibellesung",
+     "min": 4
+    },
+    {
+     "n": 4,
+     "title": "Gespräche beginnen",
+     "min": 3
+    },
+    {
+     "n": 5,
+     "title": "Interesse fördern",
+     "min": 4
+    },
+    {
+     "n": 6,
+     "title": "Was würdest du sagen?",
+     "min": 5
+    },
+    {
+     "n": 7,
+     "title": "Unsere untätigen Brüder und Schwestern nicht vergessen",
+     "min": 15
+    },
+    {
+     "n": 8,
+     "title": "Versammlungsbibelstudium",
+     "min": 30
+    }
+   ],
+   "livingFrom": 7
+  },
+  {
+   "start": "2026-11-23",
+   "reading": "Klagelieder 3–5",
+   "songs": [
+    158,
+    109,
+    74
+   ],
+   "parts": [
+    {
+     "n": 1,
+     "title": "Gib bei Schwierigkeiten nicht auf",
+     "min": 10
+    },
+    {
+     "n": 2,
+     "title": "Nach geistigen Schätzen graben",
+     "min": 10
+    },
+    {
+     "n": 3,
+     "title": "Bibellesung",
+     "min": 4
+    },
+    {
+     "n": 4,
+     "title": "Gespräche beginnen",
+     "min": 3
+    },
+    {
+     "n": 5,
+     "title": "Gespräche beginnen",
+     "min": 4
+    },
+    {
+     "n": 6,
+     "title": "Vortrag",
+     "min": 5
+    },
+    {
+     "n": 7,
+     "title": "Hilf Pflegenden, ihre Aufgabe zu bewältigen",
+     "min": 15
+    },
+    {
+     "n": 8,
+     "title": "Versammlungsbibelstudium",
+     "min": 30
+    }
+   ],
+   "livingFrom": 7
+  },
+  {
+   "start": "2026-11-30",
+   "reading": "Hesekiel 1–2",
+   "songs": [
+    65,
+    63,
+    134
+   ],
+   "parts": [
+    {
+     "n": 1,
+     "title": "Halte mit Jehovas himmlischem Wagen Schritt",
+     "min": 10
+    },
+    {
+     "n": 2,
+     "title": "Nach geistigen Schätzen graben",
+     "min": 10
+    },
+    {
+     "n": 3,
+     "title": "Bibellesung",
+     "min": 4
+    },
+    {
+     "n": 4,
+     "title": "Gespräche beginnen",
+     "min": 3
+    },
+    {
+     "n": 5,
+     "title": "Menschen zu Jüngern machen",
+     "min": 5
+    },
+    {
+     "n": 6,
+     "title": "Vortrag",
+     "min": 4
+    },
+    {
+     "n": 7,
+     "title": "Aktuelles",
+     "min": 15
+    },
+    {
+     "n": 8,
+     "title": "Versammlungsbibelstudium",
+     "min": 30
+    }
+   ],
+   "livingFrom": 7
+  },
+  {
+   "start": "2026-12-07",
+   "reading": "Hesekiel 3–4",
+   "songs": [
+    71,
+    161,
+    7
+   ],
+   "parts": [
+    {
+     "n": 1,
+     "title": "Warum wir mutig predigen",
+     "min": 10
+    },
+    {
+     "n": 2,
+     "title": "Nach geistigen Schätzen graben",
+     "min": 10
+    },
+    {
+     "n": 3,
+     "title": "Bibellesung",
+     "min": 4
+    },
+    {
+     "n": 4,
+     "title": "Gespräche beginnen",
+     "min": 3
+    },
+    {
+     "n": 5,
+     "title": "Gespräche beginnen",
+     "min": 4
+    },
+    {
+     "n": 6,
+     "title": "Menschen zu Jüngern machen",
+     "min": 5
+    },
+    {
+     "n": 7,
+     "title": "Aktuelles",
+     "min": 15
+    },
+    {
+     "n": 8,
+     "title": "Versammlungsbibelstudium",
+     "min": 30
+    }
+   ],
+   "livingFrom": 7
+  },
+  {
+   "start": "2026-12-14",
+   "reading": "Hesekiel 5–6",
+   "songs": [
+    49,
+    153,
+    133
+   ],
+   "parts": [
+    {
+     "n": 1,
+     "title": "Götzendienst bricht Jehova das Herz",
+     "min": 10
+    },
+    {
+     "n": 2,
+     "title": "Nach geistigen Schätzen graben",
+     "min": 10
+    },
+    {
+     "n": 3,
+     "title": "Bibellesung",
+     "min": 4
+    },
+    {
+     "n": 4,
+     "title": "Gespräche beginnen",
+     "min": 3
+    },
+    {
+     "n": 5,
+     "title": "Interesse fördern",
+     "min": 4
+    },
+    {
+     "n": 6,
+     "title": "Was würdest du sagen?",
+     "min": 5
+    },
+    {
+     "n": 7,
+     "title": "Warum wir uns nicht an Zeremonien zu Ehren eines Landes beteiligen",
+     "min": 15
+    },
+    {
+     "n": 8,
+     "title": "Versammlungsbibelstudium",
+     "min": 30
+    }
+   ],
+   "livingFrom": 7
+  },
+  {
+   "start": "2026-12-21",
+   "reading": "Hesekiel 7–8",
+   "songs": [
+    128,
+    139,
+    154
+   ],
+   "parts": [
+    {
+     "n": 1,
+     "title": "Jehovas Tag wird sich nicht verspäten",
+     "min": 10
+    },
+    {
+     "n": 2,
+     "title": "Nach geistigen Schätzen graben",
+     "min": 10
+    },
+    {
+     "n": 3,
+     "title": "Bibellesung",
+     "min": 4
+    },
+    {
+     "n": 4,
+     "title": "Gespräche beginnen",
+     "min": 3
+    },
+    {
+     "n": 5,
+     "title": "Interesse fördern",
+     "min": 4
+    },
+    {
+     "n": 6,
+     "title": "Menschen zu Jüngern machen",
+     "min": 5
+    },
+    {
+     "n": 7,
+     "title": "Denk an die Folgen",
+     "min": 15
+    },
+    {
+     "n": 8,
+     "title": "Versammlungsbibelstudium",
+     "min": 30
+    }
+   ],
+   "livingFrom": 7
+  },
+  {
+   "start": "2026-12-28",
+   "reading": "Hesekiel 9–10",
+   "songs": [
+    119,
+    60,
+    135
+   ],
+   "parts": [
+    {
+     "n": 1,
+     "title": "Hilf anderen, Armageddon zu überleben",
+     "min": 10
+    },
+    {
+     "n": 2,
+     "title": "Nach geistigen Schätzen graben",
+     "min": 10
+    },
+    {
+     "n": 3,
+     "title": "Bibellesung",
+     "min": 4
+    },
+    {
+     "n": 4,
+     "title": "Gespräche beginnen",
+     "min": 3
+    },
+    {
+     "n": 5,
+     "title": "Interesse fördern",
+     "min": 4
+    },
+    {
+     "n": 6,
+     "title": "Unsere Glaubensansichten erklären",
+     "min": 5
+    },
+    {
+     "n": 7,
+     "title": "Rette dich selbst und die, die auf dich hören",
+     "min": 15
+    },
+    {
+     "n": 8,
+     "title": "Versammlungsbibelstudium",
+     "min": 30
+    }
+   ],
+   "livingFrom": 7
+  },
+  {
+   "start": "2027-01-04",
+   "reading": "Hesekiel 11–12",
+   "songs": [
+    83,
+    2,
+    164
+   ],
+   "parts": [
+    {
+     "n": 1,
+     "title": "„Vielleicht werden sie es zur Kenntnis nehmen“",
+     "min": 10
+    },
+    {
+     "n": 2,
+     "title": "Nach geistigen Schätzen graben",
+     "min": 10
+    },
+    {
+     "n": 3,
+     "title": "Bibellesung",
+     "min": 4
+    },
+    {
+     "n": 4,
+     "title": "Interesse fördern",
+     "min": 3
+    },
+    {
+     "n": 5,
+     "title": "Interesse fördern",
+     "min": 4
+    },
+    {
+     "n": 6,
+     "title": "Was würdest du sagen?",
+     "min": 5
+    },
+    {
+     "n": 7,
+     "title": "Aktuelles",
+     "min": 15
+    },
+    {
+     "n": 8,
+     "title": "Versammlungsbibelstudium",
+     "min": 30
+    }
+   ],
+   "livingFrom": 7
+  },
+  {
+   "start": "2027-01-11",
+   "reading": "Hesekiel 13–14",
+   "songs": [
+    39,
+    56,
+    98
+   ],
+   "parts": [
+    {
+     "n": 1,
+     "title": "Jehova freut sich über deine Anstrengungen, das Richtige zu tun",
+     "min": 10
+    },
+    {
+     "n": 2,
+     "title": "Nach geistigen Schätzen graben",
+     "min": 10
+    },
+    {
+     "n": 3,
+     "title": "Bibellesung",
+     "min": 4
+    },
+    {
+     "n": 4,
+     "title": "Gespräche beginnen",
+     "min": 3
+    },
+    {
+     "n": 5,
+     "title": "Interesse fördern",
+     "min": 4
+    },
+    {
+     "n": 6,
+     "title": "Unsere Glaubensansichten erklären",
+     "min": 5
+    },
+    {
+     "n": 7,
+     "title": "Entwickle als junger Mensch eine starke Überzeugung",
+     "min": 15
+    },
+    {
+     "n": 8,
+     "title": "Versammlungsbibelstudium",
+     "min": 30
+    }
+   ],
+   "livingFrom": 7
+  },
+  {
+   "start": "2027-01-18",
+   "reading": "Hesekiel 15–16",
+   "songs": [
+    130,
+    58,
+    159
+   ],
+   "parts": [
+    {
+     "n": 1,
+     "title": "„Ich werde mich 5 nicht mehr gekränkt fühlen“",
+     "min": 10
+    },
+    {
+     "n": 2,
+     "title": "Nach geistigen Schätzen graben",
+     "min": 10
+    },
+    {
+     "n": 3,
+     "title": "Bibellesung",
+     "min": 4
+    },
+    {
+     "n": 4,
+     "title": "Gespräche beginnen",
+     "min": 3
+    },
+    {
+     "n": 5,
+     "title": "Interesse fördern",
+     "min": 4
+    },
+    {
+     "n": 6,
+     "title": "Unsere Glaubensansichten erklären",
+     "min": 5
+    },
+    {
+     "n": 7,
+     "title": "Vergiss nicht, wieder hinzugehen",
+     "min": 15
+    },
+    {
+     "n": 8,
+     "title": "Versammlungsbibelstudium",
+     "min": 30
+    }
+   ],
+   "livingFrom": 7
+  },
+  {
+   "start": "2027-01-25",
+   "reading": "Hesekiel 17–18",
+   "songs": [
+    30,
+    3,
+    94
+   ],
+   "parts": [
+    {
+     "n": 1,
+     "title": "Wir sind Jehova rechenschaftspflichtig",
+     "min": 10
+    },
+    {
+     "n": 2,
+     "title": "Nach geistigen Schätzen graben",
+     "min": 10
+    },
+    {
+     "n": 3,
+     "title": "Bibellesung",
+     "min": 4
+    },
+    {
+     "n": 4,
+     "title": "Menschen zu Jüngern machen",
+     "min": 2
+    },
+    {
+     "n": 5,
+     "title": "Menschen zu Jüngern machen",
+     "min": 3
+    },
+    {
+     "n": 6,
+     "title": "Menschen zu Jüngern machen",
+     "min": 3
+    },
+    {
+     "n": 7,
+     "title": "Menschen zu Jüngern machen",
+     "min": 4
+    },
+    {
+     "n": 8,
+     "title": "Bei gesundheitlichen Problemen auf Jehova vertrauen",
+     "min": 15
+    },
+    {
+     "n": 9,
+     "title": "Versammlungsbibelstudium",
+     "min": 30
+    }
+   ],
+   "livingFrom": 8
+  },
+  {
+   "start": "2027-02-01",
+   "reading": "Hesekiel 19–20",
+   "songs": [
+    11,
+    76,
+    128
+   ],
+   "parts": [
+    {
+     "n": 1,
+     "title": "„Ich handelte 5 meinem Namen zuliebe“",
+     "min": 10
+    },
+    {
+     "n": 2,
+     "title": "Nach geistigen Schätzen graben",
+     "min": 10
+    },
+    {
+     "n": 3,
+     "title": "Bibellesung",
+     "min": 4
+    },
+    {
+     "n": 4,
+     "title": "Was würdest du sagen?",
+     "min": 5
+    },
+    {
+     "n": 5,
+     "title": "Interesse fördern",
+     "min": 2
+    },
+    {
+     "n": 6,
+     "title": "Vortrag",
+     "min": 5
+    },
+    {
+     "n": 7,
+     "title": "Wie wir unsere Einsatzfreude im Dienst bewahren können",
+     "min": 15
+    },
+    {
+     "n": 8,
+     "title": "Versammlungsbibelstudium",
+     "min": 30
+    }
+   ],
+   "livingFrom": 7
+  },
+  {
+   "start": "2027-02-08",
+   "reading": "Hesekiel 21–22",
+   "songs": [
+    122,
+    104,
+    114
+   ],
+   "parts": [
+    {
+     "n": 1,
+     "title": "Bleib rein in einer moralisch verdorbenen Welt",
+     "min": 10
+    },
+    {
+     "n": 2,
+     "title": "Nach geistigen Schätzen graben",
+     "min": 10
+    },
+    {
+     "n": 3,
+     "title": "Bibellesung",
+     "min": 4
+    },
+    {
+     "n": 4,
+     "title": "Gespräche beginnen",
+     "min": 3
+    },
+    {
+     "n": 5,
+     "title": "Interesse fördern",
+     "min": 4
+    },
+    {
+     "n": 6,
+     "title": "Unsere Glaubensansichten erklären",
+     "min": 5
+    },
+    {
+     "n": 7,
+     "title": "Lass dich von nichts daran hindern, Jehova mit reinem Gewissen zu dienen",
+     "min": 15
+    },
+    {
+     "n": 8,
+     "title": "Versammlungsbibelstudium",
+     "min": 30
+    }
+   ],
+   "livingFrom": 7
+  },
+  {
+   "start": "2027-02-15",
+   "reading": "Hesekiel 23–24",
+   "songs": [
+    49,
+    73,
+    124
+   ],
+   "parts": [
+    {
+     "n": 1,
+     "title": "Was Jehova durch Ohola und Oholiba deutlich macht",
+     "min": 10
+    },
+    {
+     "n": 2,
+     "title": "Nach geistigen Schätzen graben",
+     "min": 10
+    },
+    {
+     "n": 3,
+     "title": "Bibellesung",
+     "min": 4
+    },
+    {
+     "n": 4,
+     "title": "Gespräche beginnen",
+     "min": 3
+    },
+    {
+     "n": 5,
+     "title": "Interesse fördern",
+     "min": 4
+    },
+    {
+     "n": 6,
+     "title": "Vortrag",
+     "min": 5
+    },
+    {
+     "n": 7,
+     "title": "Bericht über das Dienstjahr",
+     "min": 15
+    },
+    {
+     "n": 8,
+     "title": "Versammlungsbibelstudium",
+     "min": 30
+    }
+   ],
+   "livingFrom": 7
+  },
+  {
+   "start": "2027-02-22",
+   "reading": "Hesekiel 25–26",
+   "songs": [
+    107,
+    64,
+    35
+   ],
+   "parts": [
+    {
+     "n": 1,
+     "title": "Was wir aus Israels Verhältnis zu anderen Völkern lernen können",
+     "min": 10
+    },
+    {
+     "n": 2,
+     "title": "Nach geistigen Schätzen graben",
+     "min": 10
+    },
+    {
+     "n": 3,
+     "title": "Bibellesung",
+     "min": 4
+    },
+    {
+     "n": 4,
+     "title": "Menschen zu Jüngern machen",
+     "min": 2
+    },
+    {
+     "n": 5,
+     "title": "Menschen zu Jüngern machen",
+     "min": 3
+    },
+    {
+     "n": 6,
+     "title": "Menschen zu Jüngern machen",
+     "min": 3
+    },
+    {
+     "n": 7,
+     "title": "Menschen zu Jüngern machen",
+     "min": 4
+    },
+    {
+     "n": 8,
+     "title": "Aktuelles",
+     "min": 10
+    },
+    {
+     "n": 9,
+     "title": "Einladungsaktion für das Gedächtnismahl ab Samstag, 27. Februar",
+     "min": 5
+    },
+    {
+     "n": 10,
+     "title": "Versammlungsbibelstudium",
+     "min": 30
+    }
+   ],
+   "livingFrom": 8
+  },
+  {
+   "start": "2027-03-01",
+   "reading": "Hesekiel 27–28",
+   "songs": [
+    123,
+    114,
+    8
+   ],
+   "parts": [
+    {
+     "n": 1,
+     "title": "Schütze dein Herz vor Überheblichkeit",
+     "min": 10
+    },
+    {
+     "n": 2,
+     "title": "Nach geistigen Schätzen graben",
+     "min": 10
+    },
+    {
+     "n": 3,
+     "title": "Bibellesung",
+     "min": 4
+    },
+    {
+     "n": 4,
+     "title": "Gespräche beginnen",
+     "min": 1
+    },
+    {
+     "n": 5,
+     "title": "Gespräche beginnen",
+     "min": 3
+    },
+    {
+     "n": 6,
+     "title": "Gespräche beginnen",
+     "min": 3
+    },
+    {
+     "n": 7,
+     "title": "Interesse fördern",
+     "min": 4
+    },
+    {
+     "n": 8,
+     "title": "Sei geduldig, nicht überheblich",
+     "min": 15
+    },
+    {
+     "n": 9,
+     "title": "Versammlungsbibelstudium",
+     "min": 30
+    }
+   ],
+   "livingFrom": 8
+  },
+  {
+   "start": "2027-03-08",
+   "reading": "Hesekiel 29–30",
+   "songs": [
+    8,
+    151,
+    2
+   ],
+   "parts": [
+    {
+     "n": 1,
+     "title": "Jehova vergisst nicht, was wir für ihn tun",
+     "min": 10
+    },
+    {
+     "n": 2,
+     "title": "Nach geistigen Schätzen graben",
+     "min": 10
+    },
+    {
+     "n": 3,
+     "title": "Bibellesung",
+     "min": 4
+    },
+    {
+     "n": 4,
+     "title": "Gespräche beginnen",
+     "min": 3
+    },
+    {
+     "n": 5,
+     "title": "Gespräche beginnen",
+     "min": 4
+    },
+    {
+     "n": 6,
+     "title": "Unsere Glaubensansichten erklären",
+     "min": 5
+    },
+    {
+     "n": 7,
+     "title": "Denk in deiner Jugend an Jehova",
+     "min": 7
+    },
+    {
+     "n": 8,
+     "title": "Lokale Planungs- und Bauabteilung: Update 2027",
+     "min": 8
+    },
+    {
+     "n": 9,
+     "title": "Versammlungsbibelstudium",
+     "min": 30
+    }
+   ],
+   "livingFrom": 7
+  },
+  {
+   "start": "2027-03-15",
+   "reading": "Hesekiel 31–32",
+   "songs": [
+    150,
+    18,
+    21
+   ],
+   "parts": [
+    {
+     "n": 1,
+     "title": "Mächtige Herrscher sind Jehova nicht gewachsen!",
+     "min": 10
+    },
+    {
+     "n": 2,
+     "title": "Nach geistigen Schätzen graben",
+     "min": 10
+    },
+    {
+     "n": 3,
+     "title": "Bibellesung",
+     "min": 4
+    },
+    {
+     "n": 4,
+     "title": "Gespräche beginnen",
+     "min": 3
+    },
+    {
+     "n": 5,
+     "title": "Interesse fördern",
+     "min": 4
+    },
+    {
+     "n": 6,
+     "title": "Interesse fördern",
+     "min": 5
+    },
+    {
+     "n": 7,
+     "title": "Wie kannst du dich vorbereiten?",
+     "min": 5
+    },
+    {
+     "n": 8,
+     "title": "Ergebnisse unserer organisierten Tätigkeit für März",
+     "min": 10
+    },
+    {
+     "n": 9,
+     "title": "Versammlungsbibelstudium",
+     "min": 30
+    }
+   ],
+   "livingFrom": 7
+  },
+  {
+   "start": "2027-03-29",
+   "reading": "Hesekiel 33",
+   "songs": [
+    1,
+    32,
+    135
+   ],
+   "parts": [
+    {
+     "n": 1,
+     "title": "Jehova ist vollkommen gerecht",
+     "min": 10
+    },
+    {
+     "n": 2,
+     "title": "Nach geistigen Schätzen graben",
+     "min": 10
+    },
+    {
+     "n": 3,
+     "title": "Bibellesung",
+     "min": 4
+    },
+    {
+     "n": 4,
+     "title": "Gespräche beginnen",
+     "min": 3
+    },
+    {
+     "n": 5,
+     "title": "Interesse fördern",
+     "min": 4
+    },
+    {
+     "n": 6,
+     "title": "Interesse fördern",
+     "min": 5
+    },
+    {
+     "n": 7,
+     "title": "Aktuelles",
+     "min": 15
+    },
+    {
+     "n": 8,
+     "title": "Versammlungsbibelstudium",
+     "min": 30
+    }
+   ],
+   "livingFrom": 7
+  },
+  {
+   "start": "2027-04-05",
+   "reading": "Hesekiel 34",
+   "songs": [
+    4,
+    99,
+    153
+   ],
+   "parts": [
+    {
+     "n": 1,
+     "title": "Jehova kümmert sich um seine Schafe",
+     "min": 10
+    },
+    {
+     "n": 2,
+     "title": "Nach geistigen Schätzen graben",
+     "min": 10
+    },
+    {
+     "n": 3,
+     "title": "Bibellesung",
+     "min": 4
+    },
+    {
+     "n": 4,
+     "title": "Menschen zu Jüngern machen",
+     "min": 2
+    },
+    {
+     "n": 5,
+     "title": "Menschen zu Jüngern machen",
+     "min": 4
+    },
+    {
+     "n": 6,
+     "title": "Menschen zu Jüngern machen",
+     "min": 3
+    },
+    {
+     "n": 7,
+     "title": "Menschen zu Jüngern machen",
+     "min": 3
+    },
+    {
+     "n": 8,
+     "title": "Aktuelles",
+     "min": 15
+    },
+    {
+     "n": 9,
+     "title": "Versammlungsbibelstudium",
+     "min": 30
+    }
+   ],
+   "livingFrom": 8
+  },
+  {
+   "start": "2027-04-12",
+   "reading": "Hesekiel 35–36",
+   "songs": [
+    148,
+    10,
+    30
+   ],
+   "parts": [
+    {
+     "n": 1,
+     "title": "Er tat es, um seinen Namen zu heiligen",
+     "min": 10
+    },
+    {
+     "n": 2,
+     "title": "Nach geistigen Schätzen graben",
+     "min": 10
+    },
+    {
+     "n": 3,
+     "title": "Bibellesung",
+     "min": 4
+    },
+    {
+     "n": 4,
+     "title": "Gespräche beginnen",
+     "min": 3
+    },
+    {
+     "n": 5,
+     "title": "Was würdest du sagen?",
+     "min": 5
+    },
+    {
+     "n": 6,
+     "title": "Vortrag",
+     "min": 5
+    },
+    {
+     "n": 7,
+     "title": "Wir machen dem Namen Gottes Ehre",
+     "min": 15
+    },
+    {
+     "n": 8,
+     "title": "Versammlungsbibelstudium",
+     "min": 30
+    }
+   ],
+   "livingFrom": 7
+  },
+  {
+   "start": "2027-04-19",
+   "reading": "Hesekiel 37",
+   "songs": [
+    113,
+    157,
+    165
+   ],
+   "parts": [
+    {
+     "n": 1,
+     "title": "Zwei Stäbe werden zu einem einzigen",
+     "min": 10
+    },
+    {
+     "n": 2,
+     "title": "Nach geistigen Schätzen graben",
+     "min": 10
+    },
+    {
+     "n": 3,
+     "title": "Bibellesung",
+     "min": 4
+    },
+    {
+     "n": 4,
+     "title": "Gespräche beginnen",
+     "min": 4
+    },
+    {
+     "n": 5,
+     "title": "Gespräche beginnen",
+     "min": 3
+    },
+    {
+     "n": 6,
+     "title": "Unsere Glaubensansichten erklären",
+     "min": 5
+    },
+    {
+     "n": 7,
+     "title": "Die Leitende Körperschaft fördert die Einheit (Teil 2)",
+     "min": 15
+    },
+    {
+     "n": 8,
+     "title": "Versammlungsbibelstudium",
+     "min": 30
+    }
+   ],
+   "livingFrom": 7
+  },
+  {
+   "start": "2027-04-26",
+   "reading": "Hesekiel 38–39",
+   "songs": [
+    12,
+    53,
+    133
+   ],
+   "parts": [
+    {
+     "n": 1,
+     "title": "Jehovas Reaktion auf Gogs Angriff",
+     "min": 10
+    },
+    {
+     "n": 2,
+     "title": "Nach geistigen Schätzen graben",
+     "min": 10
+    },
+    {
+     "n": 3,
+     "title": "Bibellesung",
+     "min": 4
+    },
+    {
+     "n": 4,
+     "title": "Menschen zu Jüngern machen",
+     "min": 2
+    },
+    {
+     "n": 5,
+     "title": "Menschen zu Jüngern machen",
+     "min": 2
+    },
+    {
+     "n": 6,
+     "title": "Menschen zu Jüngern machen",
+     "min": 4
+    },
+    {
+     "n": 7,
+     "title": "Menschen zu Jüngern machen",
+     "min": 4
+    },
+    {
+     "n": 8,
+     "title": "Machst du dir beim Predigen die Unterstützung der Engel bewusst?",
+     "min": 15
+    },
+    {
+     "n": 9,
+     "title": "Versammlungsbibelstudium",
+     "min": 30
+    }
+   ],
+   "livingFrom": 8
+  }
+ ],
+ "updated": "2026-11-04"
+}

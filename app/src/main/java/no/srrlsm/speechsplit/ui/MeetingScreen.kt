@@ -100,7 +100,12 @@ fun MeetingScreen(app: AppController) {
                             Text(s3.meetingRetry, color = c.textMain)
                         }
                     }
-                    plan == null && load != MeetingLoad.LOADING -> Text(s3.meetingNoWeek, color = c.textSub, modifier = Modifier.padding(top = 16.dp))
+                    plan == null && load != MeetingLoad.LOADING -> {
+                        // A gap between weeks that are there: no meeting that week (the Memorial, a convention)
+                        val weeks = app.meetingProgram(lang)?.weeks.orEmpty()
+                        val gap = weeks.any { it.start < start } && weeks.any { it.start > start }
+                        Text(if (gap) s3.meetingNoneThisWeek else s3.meetingNoWeek, color = c.textSub, modifier = Modifier.padding(top = 16.dp))
+                    }
                 }
                 if (load == MeetingLoad.FAILED && haveSaved) {
                     Text(s3.meetingOffline, fontSize = 13.sp, color = c.textSub, modifier = Modifier.padding(top = 8.dp))

@@ -10,7 +10,7 @@ Adds the weeks to docs/meetings/<lang>.json (weeks already there are replaced, w
 ended more than 8 weeks ago are dropped). Only titles and times are stored.
 Needs: pip install pdfplumber
 """
-import json, re, sys, datetime, pathlib
+import json, re, sys, datetime, pathlib, unicodedata
 import pdfplumber
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -27,13 +27,20 @@ WORDS = {
     "de": {"song": "Lied", "prayer": "Gebet", "min": "Min.", "intro": "Einleitende Worte", "closing": "Schlussworte"},
 }
 
+# Accents the PDFs draw as a separate glyph above the letter: the ring of å, the dots of ä/ö/ü
+MARKS = {
+    "˚": {"a": "å", "A": "Å"}, "°": {"a": "å", "A": "Å"},
+    "¨": {"a": "ä", "o": "ö", "u": "ü", "A": "Ä", "O": "Ö", "U": "Ü", "e": "ë", "i": "ï"},
+    "´": {"e": "é", "E": "É", "a": "á", "o": "ó"}, "`": {"e": "è", "a": "à"},
+}
+
 def lines_of_rows(chars):
     """Groups chars into rows (rings of å stay in, lines_of merges them)."""
     rows = []
     for c in sorted(chars, key=lambda c: (c["top"], c["x0"])):
         if c["text"].strip() == "" or c["text"].startswith("(cid"):
             continue
-        if c["text"] in "˚°":
+        if c["text"] in MARKS:
             # belongs to the row of the letter below it
             continue
         for row in rows:
@@ -42,7 +49,7 @@ def lines_of_rows(chars):
                 break
         else:
             rows.append([c])
-    rings = [c for c in chars if c["text"] in "˚°"]
+    rings = [c for c in chars if c["text"] in MARKS]
     for r in rings:
         for row in rows:
             if 0 < row[0]["top"] - r["top"] < 12 and any(c["x0"] - 1 <= (r["x0"] + r["x1"]) / 2 <= c["x1"] + 1 for c in row):
@@ -52,17 +59,18 @@ def lines_of_rows(chars):
 
 def lines_of(chars):
     """Chars to text lines: merges the ring of å (drawn as a separate glyph) and puts spaces back."""
-    rings = [c for c in chars if c["text"] in "˚°"]
-    rest = [c for c in chars if c["text"] not in "˚°" and c["text"].strip() != "" and not c["text"].startswith("(cid")]
+    rings = [c for c in chars if c["text"] in MARKS]
+    rest = [c for c in chars if c["text"] not in MARKS and c["text"].strip() != "" and not c["text"].startswith("(cid")]
     for r in rings:
         rx = (r["x0"] + r["x1"]) / 2
+        table = MARKS[r["text"]]
         best = None
         for c in rest:
-            if c["text"] in "aA" and c["x0"] - 1 <= rx <= c["x1"] + 1 and 0 < c["top"] - r["top"] < 12:
+            if c["text"] in table and c["x0"] - 1 <= rx <= c["x1"] + 1 and 0 < c["top"] - r["top"] < 12:
                 if best is None or c["top"] < best["top"]:
                     best = c
         if best is not None:
-            best["text"] = "å" if best["text"] == "a" else "Å"
+            best["text"] = table[best["text"]]
     rows = []
     for c in sorted(rest, key=lambda c: (round(c["top"]), c["x0"])):
         for row in rows:
@@ -116,7 +124,7 @@ def parse(lang, path):
         mid = page.width / 2
         order = lambda l: (page_no, 0 if l["x0"] < mid else 1, l["top"])
         full = lines_of(list(page.chars))
-        header = next((l for l in full if l["top"] < 20), None)
+        header = next((l for l in full if l["top"] < 20 and re.search(r"\d", l["text"])), None)
         # Week header, e.g. "2.–8. NOVEMBER | JEREMIA 49–50" or "30. NOVEMBER–6. DESEMBER | ..."
         if header:
             m = re.search(r"(\d{1,2})\.?\s*(?:([A-ZÆØÅÄÖÜ]+)\s*)?[–-]\s*(\d{1,2})\.?\s*([A-ZÆØÅÄÖÜ]+)", header["text"].upper())
@@ -138,18 +146,21 @@ def parse(lang, path):
                 cur["song2_at"] = order(l)
         minre = r"\(\s*(\d+)\s*" + re.escape(w["min"].rstrip(".")) + r"\.?\s*\)"
         for i, l in enumerate(ch):
-            pm = re.match(r"^(\d)\.\s*(.*)$", l["text"])
+            pm = re.match(r"^(\d{1,2})\.\s*(.*)$", l["text"])
             if not pm:
                 continue
             title, last_top = pm.group(2), l["top"]
             for _ in range(3):
                 if re.search(minre, title):
                     break
-                same = [c for c in ch if abs(c["top"] - last_top) < 4 and l["x0"] < c["x0"] < l["x0"] + 230 and c is not l]
+                same = sorted([c for c in ch if abs(c["top"] - last_top) < 4 and l["x0"] < c["x0"] < l["x0"] + 230 and c is not l],
+                              key=lambda c: (not re.search(minre, c["text"]), c["x0"]))
                 nxt = same or [c for c in ch if 6 < c["top"] - last_top < 18 and l["x0"] - 2 <= c["x0"] <= l["x0"] + 24]
                 if not nxt:
                     break
-                title += " " + nxt[0]["text"]
+                more = nxt[0]["text"]
+                # A word split over two lines ("Völ-" + "kern") is joined again
+                title = title[:-1] + more if re.search(r"[a-zæøåäöüß]-$", title) and more[:1].islower() else title + " " + more
                 last_top = nxt[0]["top"]
             tm = re.search(minre, title)
             if tm:
@@ -176,8 +187,11 @@ def iso_weeks(lang, weeks, issue_year, issue_month):
         reading = h[len(h) - len(reading):].strip()
         if lang == "en":
             reading = re.sub(r"^.*?\d+\s+", "", h).strip()
+        reading = re.sub(r"(\d)\s*-\s*(\d)", "\\1–\\2", unicodedata.normalize("NFKC", reading))
         parts = {}
         for p in wk["parts"]:
+            # "ﬁ" ligatures to plain letters, "49-50" with a proper dash
+            p["title"] = unicodedata.normalize("NFKC", p["title"])
             parts.setdefault(p["n"], p)
         songs = wk["songs"][:3]
         living = [p["n"] for p in wk["parts"] if "song2_at" in wk and p["at"] > wk["song2_at"]]
@@ -185,6 +199,11 @@ def iso_weeks(lang, weeks, issue_year, issue_month):
         if same is not None:
             # A later page about the same week (e.g. a discussion on the last page): fill gaps only
             have = {p["n"] for p in same["parts"]}
+            # "Continued on page 16": the songs and the last section come from that page
+            if len(same["songs"]) < 3:
+                same["songs"] = (same["songs"] + songs)[:3]
+            if living and not same.pop("_living", False):
+                same["livingFrom"] = min(living)
             same["parts"] = sorted(same["parts"] + [{"n": n, "title": parts[n]["title"], "min": parts[n]["min"]} for n in parts if n not in have], key=lambda p: p["n"])
             continue
         result.append({
@@ -194,6 +213,7 @@ def iso_weeks(lang, weeks, issue_year, issue_month):
             "parts": [{"n": n, "title": parts[n]["title"], "min": parts[n]["min"]} for n in sorted(parts)],
             # First part of "Our Christian Life" (the middle song comes right before it)
             "livingFrom": min(living) if living else 7,
+            "_living": bool(living),
         })
     return result
 
@@ -212,6 +232,8 @@ def main():
             by_start[w["start"]] = w
             print(w["start"], w["reading"], w["songs"], [(p["n"], p["min"], p["title"]) for p in w["parts"]])
     cutoff = (datetime.date.today() - datetime.timedelta(weeks=8)).isoformat()
+    for w in by_start.values():
+        w.pop("_living", None)
     data["weeks"] = [by_start[k] for k in sorted(by_start) if k >= cutoff]
     data["updated"] = datetime.date.today().isoformat()
     target.write_text(json.dumps(data, ensure_ascii=False, indent=1) + "\n")
