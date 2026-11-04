@@ -21,6 +21,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import no.srrlsm.speechsplit.core.AppController
+import no.srrlsm.speechsplit.core.MeetingKind
 import no.srrlsm.speechsplit.core.PracticeRun
 import no.srrlsm.speechsplit.core.RecentRuns
 import no.srrlsm.speechsplit.core.buildRunReport
@@ -38,10 +39,18 @@ fun HistoryScreen(app: AppController) {
     val s = LocalStrings.current
     val ui = LocalUiActions.current
     val c = AppTheme.colors
+    val s3 = LocalStrings3.current
     val plan = app.activePlan ?: return
-    val runs = app.runsFor(plan.id) // newest first
-    val stats = remember(plan, runs, app.settings.celebrateTolerance) {
-        planStats(plan, runs, app.settings.celebrateTolerance)
+    val meeting = plan.meeting
+    val allRuns = app.runsFor(plan.id) // newest first
+    // Practice / real speech filter, only when there are both
+    val showFilter = meeting == null && allRuns.any { it.live } && allRuns.any { !it.live }
+    val filter = if (showFilter) app.historyFilter else null
+    val runs = if (filter == null) allRuns else allRuns.filter { it.live == filter }
+    val stats = remember(plan, allRuns, filter, app.settings.celebrateTolerance) {
+        val st = planStats(plan, runs, app.settings.celebrateTolerance)
+        // A meeting is "on target" when it ended in time
+        if (meeting != null) st.copy(onTargetCount = runs.count { it.diffSeconds <= 0 }) else st
     }
     var expandedRun by remember { mutableStateOf<String?>(null) }
     var confirmClear by remember { mutableStateOf(false) }
@@ -56,14 +65,29 @@ fun HistoryScreen(app: AppController) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = s.back)
             }
             Column(Modifier.weight(1f)) {
-                Text(s.historyTitle, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-                Text(plan.title, color = c.textSub, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(if (meeting != null) s3.meetingHistoryTitle else s.historyTitle, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    when (meeting?.kind) {
+                        null -> plan.title
+                        MeetingKind.WEEKEND -> s3.meetingWeekendTitle
+                        MeetingKind.MIDWEEK -> s3.meetingMidweek
+                    },
+                    color = c.textSub, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                )
             }
         }
 
-        if (runs.isEmpty()) {
+        if (allRuns.isEmpty()) {
             Text(s.noHistory, color = c.textSub, modifier = Modifier.padding(16.dp))
             return@Column
+        }
+        if (showFilter) {
+            SegmentedChoice(
+                options = listOf<Pair<Boolean?, String>>(null to s3.filterAll, false to s3.modePractice, true to s3.modeLive),
+                selected = filter,
+                onSelect = { app.filterHistory(it) },
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+            )
         }
 
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
@@ -97,8 +121,8 @@ fun HistoryScreen(app: AppController) {
                 }
             }
 
-            // --- Suggestions (never applied automatically) ---
-            if (stats.suggestions.isNotEmpty()) {
+            // --- Suggestions (never applied automatically). A meeting's times come from the workbook. ---
+            if (stats.suggestions.isNotEmpty() && meeting == null) {
                 item {
                     SectionLabel(s.suggestionsTitle, Modifier.padding(top = 24.dp, bottom = 8.dp, start = 4.dp))
                     Surface(
@@ -130,8 +154,8 @@ fun HistoryScreen(app: AppController) {
                 }
             }
 
-            // --- Average per segment ---
-            item {
+            // --- Average per segment (the midweek parts change every week, so not for that meeting) ---
+            if (meeting?.kind != MeetingKind.MIDWEEK) item {
                 SectionLabel(s.segmentAveragesTitle, Modifier.padding(top = 24.dp, bottom = 8.dp, start = 4.dp))
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(horizontal = 14.dp, vertical = 6.dp)) {
@@ -157,7 +181,16 @@ fun HistoryScreen(app: AppController) {
                     Column(Modifier.clickable { expandedRun = if (expanded) null else run.id }.padding(start = 14.dp, end = 4.dp, top = 6.dp, bottom = 6.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
-                                Text(app.formatDate(run.finishedAtEpochMs), fontWeight = FontWeight.Medium, maxLines = 1)
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(app.formatDate(run.finishedAtEpochMs), fontWeight = FontWeight.Medium, maxLines = 1)
+                                    if (run.live && meeting == null) {
+                                        Spacer(Modifier.width(6.dp))
+                                        Surface(color = c.surfaceHigh, shape = RoundedCornerShape(50)) {
+                                            Text(s3.liveBadge, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 8.dp, vertical = 1.dp))
+                                        }
+                                    }
+                                }
+                                if (meeting != null) Text(run.planTitle, color = c.textSub, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 Text(
                                     "${formatTime(run.totalActualSeconds)} · ${s.reportPlan(formatTime(run.totalTargetSeconds))}",
                                     color = c.textSub, fontSize = 13.sp, style = Tabular,
@@ -172,6 +205,8 @@ fun HistoryScreen(app: AppController) {
                             }
                         }
                         if (expanded) {
+                            val summary = remember(run.id, allRuns) { app.summaryOf(run) }
+                            SummaryBlocks(summary, Modifier.padding(end = 10.dp, top = 6.dp, bottom = 8.dp))
                             run.segments.forEach { seg ->
                                 Row(Modifier.fillMaxWidth().padding(end = 12.dp, top = 4.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                                     Text(seg.title, color = c.textSub, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))

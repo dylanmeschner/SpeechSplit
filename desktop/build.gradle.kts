@@ -37,8 +37,6 @@ dependencies {
     implementation(libs.compose.material.icons.extended.desktop)
     implementation(libs.kotlinx.coroutines.swing)
     implementation(libs.json)
-    // Reads the text of PDF speeches for "import a document"
-    implementation("org.apache.pdfbox:pdfbox:3.0.5")
 }
 
 compose.desktop {

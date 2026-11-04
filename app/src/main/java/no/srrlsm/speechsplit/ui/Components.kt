@@ -1,7 +1,17 @@
 package no.srrlsm.speechsplit.ui
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.TextAutoSize
@@ -18,7 +28,9 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -31,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import no.srrlsm.speechsplit.core.AppSettings
 import no.srrlsm.speechsplit.core.EnglishStrings
+import no.srrlsm.speechsplit.core.EnglishStrings3
 import no.srrlsm.speechsplit.core.ReleaseInfo
 import no.srrlsm.speechsplit.core.Strings
 import no.srrlsm.speechsplit.core.TimeStatus
@@ -97,6 +110,8 @@ fun urlEncode(text: String): String = buildString {
 
 val LocalUiActions = staticCompositionLocalOf<UiActions> { error("UiActions not provided") }
 val LocalStrings = staticCompositionLocalOf { EnglishStrings }
+/** Texts added in 3.0 (core/Strings3.kt). */
+val LocalStrings3 = staticCompositionLocalOf { EnglishStrings3 }
 val LocalSettings = staticCompositionLocalOf { AppSettings() }
 
 /** True when the window is wide enough for the list and the speech side by side (PC, tablet landscape). */
@@ -137,6 +152,48 @@ fun DiffPill(diffSeconds: Int, fontSize: TextUnit, modifier: Modifier = Modifier
             style = Tabular,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
         )
+    }
+}
+
+/**
+ * A dialog title with a close button (X) in its corner, so a dialog can always be closed without
+ * looking for the button at the bottom (on a small phone that used to mean scrolling down).
+ * Use it as the `title` of an AlertDialog.
+ */
+@Composable
+fun ClosableTitle(text: String, onClose: () -> Unit) {
+    val s = LocalStrings.current
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        Text(text, modifier = Modifier.weight(1f))
+        Box(Modifier.padding(start = 8.dp)) {
+            IconButton(onClick = onClose) {
+                Icon(Icons.Default.Close, contentDescription = s.close, tint = AppTheme.colors.textSub)
+            }
+        }
+    }
+}
+
+/** Two or three options that work as one choice (practice / real speech, midweek / weekend). */
+@Composable
+fun <T> SegmentedChoice(options: List<Pair<T, String>>, selected: T, onSelect: (T) -> Unit, modifier: Modifier = Modifier) {
+    val c = AppTheme.colors
+    Surface(color = c.surfaceHigh, shape = RoundedCornerShape(12.dp), modifier = modifier) {
+        Row(Modifier.padding(4.dp).selectableGroup(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            options.forEach { (value, label) ->
+                val on = value == selected
+                Surface(
+                    color = if (on) c.surface else androidx.compose.ui.graphics.Color.Transparent,
+                    contentColor = if (on) c.textMain else c.textSub,
+                    shape = RoundedCornerShape(9.dp),
+                    shadowElevation = if (on) 1.dp else 0.dp,
+                    modifier = Modifier.weight(1f).selectable(selected = on, role = Role.RadioButton, onClick = { onSelect(value) }),
+                ) {
+                    Box(Modifier.padding(horizontal = 8.dp, vertical = 10.dp), contentAlignment = Alignment.Center) {
+                        FitText(label, maxSize = 15.sp, minSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            }
+        }
     }
 }
 

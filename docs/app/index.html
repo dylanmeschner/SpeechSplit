@@ -41,6 +41,8 @@
   .small { font-size: 13px; }
   .hidden { display: none !important; }
 
+  /* While timing, the page is exactly one screen tall: the list scrolls and the buttons stay at the bottom (a meeting has 13 parts) */
+  #root.fit { height: 100vh; height: 100dvh; min-height: 0; overflow: hidden; }
   #root { min-height: 100%; display: flex; flex-direction: column;
     padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left); }
   .page { flex: 1; width: 100%; max-width: 640px; margin: 0 auto; padding: 20px 20px 24px; display: flex; flex-direction: column; }
@@ -90,9 +92,14 @@
 
   /* Dialog */
   .scrim { position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,.42); display: grid; place-items: center; padding: 16px; animation: fade .15s; }
-  .dialog { width: min(480px, 100%); max-height: calc(100% - 24px); overflow-y: auto; background: var(--surface); border-radius: 24px; padding: 22px; box-shadow: var(--shadow); animation: pop .18s; }
-  .dialog h3 { margin: 0 0 12px; font-size: 21px; }
-  .dialog .actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; margin-top: 18px; }
+  /* Only the body scrolls: the close button (top corner) and the buttons at the bottom always stay in view */
+  .dialog { position: relative; width: min(480px, 100%); max-height: calc(100% - 24px); overflow: hidden; display: flex; flex-direction: column;
+    background: var(--surface); border-radius: 24px; padding: 22px; box-shadow: var(--shadow); animation: pop .18s; }
+  .dialog h3 { margin: 0 0 12px; font-size: 21px; padding-right: 36px; }
+  .dialog h3[style] { padding: 0 36px; }
+  .dialog .body { flex: 1 1 auto; min-height: 0; overflow-y: auto; margin: 0 -22px; padding: 0 22px; overscroll-behavior: contain; }
+  .dialog .actions { flex: none; display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; margin-top: 18px; }
+  .dlg-x { position: absolute; top: 10px; right: 10px; z-index: 2; color: var(--sub); }
   @keyframes fade { from { opacity: 0; } }
   @keyframes pop { from { transform: scale(.96); opacity: 0; } }
 
@@ -148,7 +155,61 @@
   /* Ready */
   .ready { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 24px; }
   .ready h1 { font-size: clamp(28px, 7vw, 44px); margin: 14px 0 6px; line-height: 1.1; overflow-wrap: anywhere; }
-  .ready .start { width: min(420px, 100%); min-height: 76px; font-size: 22px; border-radius: 18px; margin-top: 40px; letter-spacing: .02em; }
+  .ready .start { width: min(420px, 100%); min-height: 76px; font-size: 22px; border-radius: 18px; margin-top: 18px; letter-spacing: .02em; }
+  .ready .mode { width: min(420px, 100%); margin-top: 32px; }
+  .ready .mode p { margin: 6px 0 0; }
+
+  /* Choice of two or three (practice / real, midweek / weekend) */
+  .segmented { display: flex; gap: 4px; padding: 4px; border-radius: 12px; background: var(--surface2); }
+  .segmented button { flex: 1; min-width: 0; border: 0; background: none; padding: 9px 8px; border-radius: 9px; font-weight: 600; color: var(--sub); cursor: pointer; }
+  .segmented button.on { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.14); }
+
+  /* Library: folders, and the two smaller buttons side by side */
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .pair .btn { padding: 0 10px; min-width: 0; }
+  @media (max-width: 360px) { .pair { grid-template-columns: 1fr; } }
+  .plan.folder { padding-left: 16px; }
+  .plan.folder > svg { width: 26px; height: 26px; color: var(--sub); flex: none; margin-right: 14px; }
+  .plan.folder .chev { width: 22px; height: 22px; color: var(--sub); margin: 0 10px; }
+
+  /* Meeting mode */
+  .weeknav { display: flex; align-items: center; gap: 4px; padding: 8px 4px; margin-top: 14px; text-align: center; }
+  .weeknav > div { flex: 1; min-width: 0; }
+  .linkish { background: none; border: 0; color: var(--blue); font-weight: 600; cursor: pointer; padding: 0 0 0 6px; font-size: 13px; }
+  .program { margin-top: 12px; padding: 4px 14px; }
+  .prow { display: flex; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 15px; }
+  .prow span { flex: 1; min-width: 0; }
+  .prow:last-child { border-bottom: 0; }
+  .prow.total span { color: var(--sub); font-size: 13px; font-weight: 600; }
+  .bufline { margin: -4px 20px 10px; font-size: 11px; font-weight: 700; letter-spacing: .05em; color: var(--blue); }
+  .bufline.used { color: var(--amber); } .bufline.over { color: var(--red); }
+
+  /* Summary after a run */
+  .sumbox { text-align: left; max-width: 460px; margin: 12px auto 0; }
+  .sum { border-radius: 12px; padding: 10px 12px; margin-top: 8px; }
+  .sum.good { background: color-mix(in srgb, var(--green) 12%, transparent); }
+  .sum.note { background: color-mix(in srgb, var(--amber) 14%, transparent); }
+  .sum p { display: flex; gap: 8px; align-items: flex-start; margin: 6px 0 0; font-size: 14px; }
+  .sum svg { width: 18px; height: 18px; flex: none; margin-top: 1px; }
+  .sum.good svg { color: var(--green); } .sum.note svg { color: var(--amber); }
+  .verdict { font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .v-ok { color: var(--green); } .v-bitOver, .v-bitUnder { color: var(--amber); } .v-over { color: var(--red); } .v-under { color: var(--blue); }
+  .attempts div { display: flex; gap: 12px; align-items: center; justify-content: center; padding: 4px 0; }
+  .attempts span:first-child { min-width: 90px; text-align: left; color: var(--sub); }
+
+  /* Introduction cards and what's new */
+  .tut { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; margin: 0 -22px; }
+  .tut::-webkit-scrollbar { display: none; }
+  .tut section { flex: 0 0 100%; scroll-snap-align: start; padding: 8px 30px 0; text-align: center; }
+  .tut-ic { width: 84px; height: 84px; border-radius: 50%; margin: 6px auto 16px; display: grid; place-items: center; background: var(--surface2); color: var(--ink); }
+  .tut-ic svg { width: 40px; height: 40px; }
+  .tut h3 { margin: 0 0 8px; padding: 0; }
+  .tut p { margin: 0; color: var(--sub); }
+  .dots { display: flex; justify-content: center; gap: 8px; margin-top: 18px; }
+  .dots i { width: 8px; height: 8px; border-radius: 4px; background: var(--line); cursor: pointer; transition: width .2s; }
+  .dots i.on { background: var(--ink); width: 20px; }
+  .news { margin: 0; padding-left: 20px; }
+  .news li { margin: 6px 0; font-size: 15px; }
   .ready .links { display: flex; flex-wrap: wrap; justify-content: center; margin-top: 12px; }
 
   /* Timer */
@@ -177,7 +238,7 @@
   .controls .btn { flex: 1; min-height: 64px; font-size: 16px; letter-spacing: .03em; }
   .controls .undo { flex: 0 0 64px; padding: 0; background: var(--surface2); border-color: var(--surface2); color: var(--text); }
   .controls .pause { background: var(--surface); color: var(--text); border: 2px solid var(--line); }
-  .finished { background: var(--surface); padding: 24px 20px; text-align: center; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  .finished { background: var(--surface); padding: 20px 20px; text-align: center; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); max-height: 58vh; overflow-y: auto; }
   .finished .ic { font-size: 40px; }
   .finished h3 { margin: 6px 0 2px; font-size: 28px; }
   .flash { position: absolute; inset: 0; pointer-events: none; border: 6px solid transparent; opacity: 0; z-index: 4; }
@@ -203,15 +264,17 @@
   .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .stat { padding: 14px; }
   .stat .v { font-size: 30px; font-weight: 700; margin-top: 2px; }
-  .bars { display: flex; align-items: center; gap: 6px; height: 110px; padding: 10px 6px; position: relative; }
+  .bars { display: flex; gap: 6px; height: 110px; padding: 10px 6px; position: relative; }
   .bars::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; border-top: 1px dashed var(--line); }
-  .bars i { flex: 1; border-radius: 4px; position: relative; }
+  .bars > span { flex: 1; position: relative; display: flex; justify-content: center; }
+  .bars i { position: absolute; width: 100%; max-width: 28px; border-radius: 4px; }
   .runrow { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--line); cursor: pointer; }
   .runrow:last-child { border-bottom: 0; }
   .runrow .d { flex: 1; }
   .rundetail { padding: 4px 14px 12px; font-size: 14px; }
-  .rundetail div { display: flex; gap: 10px; padding: 3px 0; }
-  .rundetail div span:first-child { flex: 1; }
+  .rundetail > div { display: flex; gap: 10px; padding: 3px 0; }
+  .rundetail > div > span:first-child { flex: 1; }
+  .rundetail > .sumbox { display: block; margin: 0 0 8px; max-width: none; }
 
   /* Toast, banner, drop */
   .toast { position: fixed; left: 50%; bottom: calc(90px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 70; background: var(--ink); color: var(--on-ink);
@@ -240,7 +303,7 @@
 <div id="root"></div>
 <noscript>Speech Split needs JavaScript.</noscript>
 <script src="strings.js"></script>
-<script src="import.js"></script>
+<script src="strings3.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

@@ -54,8 +54,24 @@ class TimerEngine(private val clockMs: () -> Long) {
 
     fun totalElapsedSeconds(): Int = (totalMs() / 1000).toInt()
 
-    /** Seconds per segment, adding up exactly to [totalElapsedSeconds]. */
-    fun allElapsedSeconds(): List<Int> = (0 until segmentCount).map { elapsedSeconds(it) }
+    /**
+     * Seconds per segment, adding up exactly to [totalElapsedSeconds]. Same result as calling
+     * [elapsedSeconds] for each, but in one pass (it runs every tick, and a meeting has 13 parts).
+     */
+    fun allElapsedSeconds(): List<Int> {
+        val live = liveMs()
+        val out = ArrayList<Int>(segmentCount)
+        var sum = 0L
+        var prevSecs = 0L
+        for (i in 0 until segmentCount) {
+            sum += recordedMs.getOrElse(i) { 0L }
+            val through = if (i >= currentIndex) sum + live else sum
+            val secs = through / 1000
+            out += (secs - prevSecs).toInt()
+            prevSecs = secs
+        }
+        return out
+    }
 
     /** How long until the next whole second ticks over, so the display can flip exactly on time. */
     fun msToNextSecond(): Long = 1000 - (totalMs() % 1000)

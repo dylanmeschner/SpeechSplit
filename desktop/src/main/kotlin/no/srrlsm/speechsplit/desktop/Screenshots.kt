@@ -1,5 +1,7 @@
 package no.srrlsm.speechsplit.desktop
 
+import no.srrlsm.speechsplit.core.AppLanguage
+
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.unit.Density
@@ -41,6 +43,10 @@ private class MemoryStore(var settings: AppSettings) : AppStore {
     override fun saveSettings(settings: AppSettings) { this.settings = settings }
     override fun exportPlan(plan: SpeechPlan) = JsonCodec.planToJson(plan, false).toString()
     override fun importPlan(text: String, fallbackTitle: String): SpeechPlan? = null
+    // The real meeting programs from the website folder, for the meeting screenshots
+    override fun loadMeetingCache(language: String): String? =
+        listOf("../docs/meetings/$language.json", "docs/meetings/$language.json").map(::File).firstOrNull { it.exists() }?.readText()
+    override fun readMeetingProgram(text: String) = JsonCodec.meetingProgramFromJson(text)
 }
 
 private class FakeClockPlatform(private val newer: Boolean = false) : PlatformServices {
@@ -52,6 +58,7 @@ private class FakeClockPlatform(private val newer: Boolean = false) : PlatformSe
     override fun monotonicMs() = now
     override fun epochMs() = 1_791_300_000_000L
     override fun formatDateTime(epochMs: Long) = "6 Oct 2026, 18:30"
+    override fun localDateIso(epochMs: Long) = "2026-11-04"
     override val canVibrate = false
     override fun vibrate(long: Boolean) {}
     override val supportsWatchAlerts = false
@@ -84,7 +91,7 @@ fun main(args: Array<String>) {
     for (dark in listOf(false, true)) {
         val mode = if (dark) "dark" else "light"
         fun shot(name: String, height: Int = 1640, width: Int = 880, newer: Boolean = false, setup: (AppController, FakeClockPlatform) -> Unit) {
-            val store = MemoryStore(AppSettings(themeMode = if (dark) ThemeMode.DARK else ThemeMode.LIGHT))
+            val store = MemoryStore(AppSettings(themeMode = if (dark) ThemeMode.DARK else ThemeMode.LIGHT, tutorialSeen = true, lastSeenVersion = "2.0", language = AppLanguage.NORWEGIAN.takeIf { name.startsWith("15") } ?: AppLanguage.SYSTEM))
             store.plans = listOf(plan, SpeechPlan(title = "Wedding toast", segments = listOf(intro, close)))
             store.runs = listOf(30, 45, 12, 50).mapIndexed { i, over ->
                 PracticeRun(planId = plan.id, planTitle = plan.title, finishedAtEpochMs = 1_791_300_000_000L - i * 86_400_000L,
@@ -134,13 +141,15 @@ fun main(args: Array<String>) {
             app.editPlan(app.speechPlans[0]); app.updateActivePlan { it.copy(title = "Sunday talk v2") }
             app.guardEdits { app.backToLibrary() }
         }
-        shot("10-import") { app, _ ->
-            app.importText(
-                "Sunday talk\n\nIntroduction\nGood morning everyone, and thank you for coming. Today I want to talk about patience.\n\n" +
-                    "Main point\n" + "Patience is more than waiting. It is how we act while we wait. ".repeat(40) + "\n\n" +
-                    "Story\n" + "Let me tell you about my grandfather and his garden. ".repeat(30) + "\n\n" +
-                    "Conclusion\nSo this week, try to notice one moment where you can choose patience. Thank you."
-            )
+        shot("10-meeting") { app, _ -> app.openMeeting() }
+        shot("15-meeting-timer") { app, p ->
+            app.setMeetingLanguage("no"); app.startMeeting()
+            p.now = 300_000; app.nextSegment(); p.now += 75_000; app.nextSegment()
+            p.now += 640_000; app.engine.tick()
+        }
+        shot("16-summary") { app, p ->
+            app.openPlan(app.speechPlans[0]); app.startTimer()
+            for (secs in listOf(120, 455, 236, 121)) { p.now += secs * 1000L; app.nextSegment() }
         }
     }
 }

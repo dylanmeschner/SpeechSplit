@@ -5,7 +5,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Sort
@@ -21,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import no.srrlsm.speechsplit.core.AppController
 import no.srrlsm.speechsplit.core.AppScreen
+import no.srrlsm.speechsplit.core.Folder
 import no.srrlsm.speechsplit.core.QuickTimerOptions
 import no.srrlsm.speechsplit.core.SpeechPlan
 import no.srrlsm.speechsplit.core.SpeechSort
@@ -47,13 +50,14 @@ fun HomeTabs(app: AppController) {
             when (app.currentScreen) {
                 AppScreen.SETTINGS -> SettingsScreen(app)
                 AppScreen.ARCHIVE -> ArchiveScreen(app)
+                AppScreen.MEETING -> MeetingScreen(app)
                 else -> LibraryScreen(app)
             }
         }
         NavigationBar(containerColor = c.surface) {
             NavigationBarItem(
                 selected = app.currentScreen != AppScreen.SETTINGS,
-                onClick = { app.backToLibrary() },
+                onClick = { app.libraryTab() },
                 icon = { Icon(Icons.Default.Timer, contentDescription = null) },
                 label = { Text(s.tabSpeeches) },
                 colors = itemColors,
@@ -76,6 +80,7 @@ fun HomeTabs(app: AppController) {
 @Composable
 fun LibraryScreen(app: AppController) {
     val s = LocalStrings.current
+    val s3 = LocalStrings3.current
     val ui = LocalUiActions.current
     val c = AppTheme.colors
     var showImportChoice by remember { mutableStateOf(false) }
@@ -83,59 +88,80 @@ fun LibraryScreen(app: AppController) {
     var showQuick by remember { mutableStateOf(false) }
     var planToDelete by remember { mutableStateOf<SpeechPlan?>(null) }
     var planToExport by remember { mutableStateOf<SpeechPlan?>(null) }
+    var planToMove by remember { mutableStateOf<SpeechPlan?>(null) }
     var exportLibrary by remember { mutableStateOf(false) }
+    var newFolder by remember { mutableStateOf(false) }
+    var renameFolder by remember { mutableStateOf(false) }
+    var deleteFolder by remember { mutableStateOf(false) }
     val wide = LocalWideLayout.current
-    val plans = app.visiblePlans
+    val folder = app.openFolder
+    val plans = app.plansIn(folder?.id)
+    val folders = if (folder == null) app.sortedFolders else emptyList()
+    // Counted once, not once per folder card
+    val folderCounts = if (folders.isEmpty()) emptyMap() else app.visiblePlans.groupingBy { it.folderId }.eachCount()
     val archivedCount = app.archivedPlans.size
+    if (folder != null) AppBackHandler { app.openFolder(null) }
     // Narrow split-screen panes: smaller heading, so the icons still fit next to it
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val narrow = maxWidth < 360.dp
+        val veryNarrow = maxWidth < 300.dp
         Column(Modifier.fillMaxSize().padding(if (narrow) 16.dp else 24.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                if (folder != null) {
+                    IconButton(onClick = { app.openFolder(null) }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = s.back)
+                    }
+                }
                 Text(
-                    s.libraryTitle,
+                    folder?.name ?: s.libraryTitle,
                     // The list pane next to an open speech is narrower: smaller heading there too
-                    fontSize = if (narrow || wide) 26.sp else 32.sp,
-                    lineHeight = if (narrow || wide) 30.sp else 36.sp,
+                    fontSize = if (narrow || wide || folder != null) 26.sp else 32.sp,
+                    lineHeight = if (narrow || wide || folder != null) 30.sp else 36.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),
                 )
                 SortMenu(app)
-                // Export the whole library (speeches, archive, history) as one file
-                IconButton(onClick = { exportLibrary = true }) {
-                    Icon(Icons.Default.Upload, contentDescription = s.exportLibrary, tint = c.textMain)
-                }
-                IconButton(onClick = { app.guardEdits { if (ui.canPickDocuments) showImportChoice = true else showPaste = true } }) {
-                    Icon(Icons.Default.Download, contentDescription = s.importLabel, tint = c.textMain)
+                if (folder != null) {
+                    FolderMenu(onRename = { renameFolder = true }, onDelete = { deleteFolder = true })
+                } else {
+                    IconButton(onClick = { app.guardEdits { newFolder = true } }) {
+                        Icon(Icons.Default.CreateNewFolder, contentDescription = s3.newFolder, tint = c.textMain)
+                    }
+                    // Export the whole library (speeches, folders, archive, history) as one file
+                    IconButton(onClick = { exportLibrary = true }) {
+                        Icon(Icons.Default.Upload, contentDescription = s.exportLibrary, tint = c.textMain)
+                    }
+                    IconButton(onClick = { app.guardEdits { if (ui.canPickDocuments) showImportChoice = true else showPaste = true } }) {
+                        Icon(Icons.Default.Download, contentDescription = s.importLabel, tint = c.textMain)
+                    }
                 }
             }
 
             Spacer(Modifier.height(if (narrow) 12.dp else 24.dp))
-            UpdateBanner(app)
-            if (app.importBusy) {
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 12.dp)) {
-                    CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(10.dp))
-                    Text(s.importReading, color = c.textSub, fontSize = 14.sp)
-                }
-            }
+            if (folder == null) UpdateBanner(app)
 
-            if (plans.isEmpty()) {
+            if (plans.isEmpty() && folders.isEmpty()) {
                 Column(Modifier.weight(1f)) {
-                    Text(s.noSpeeches, color = c.textSub)
-                    if (ui.canPickDocuments) {
+                    Text(if (folder != null) s3.folderEmpty else s.noSpeeches, color = c.textSub)
+                    if (ui.canPickDocuments && folder == null) {
                         Spacer(Modifier.height(8.dp))
-                        Text(s.dropHint, color = c.textSub, fontSize = 14.sp)
+                        Text(s3.importDropFile, color = c.textSub, fontSize = 14.sp)
                     }
-                    if (archivedCount > 0) ArchiveLink(archivedCount) { app.guardEdits { app.openArchive() } }
+                    if (archivedCount > 0 && folder == null) ArchiveLink(archivedCount) { app.guardEdits { app.openArchive() } }
                 }
             } else {
                 LazyColumn(Modifier.weight(1f)) {
+                    items(folders, key = { "folder-" + it.id }) { f ->
+                        FolderCard(f, count = folderCounts[f.id] ?: 0) { app.openFolder(f.id) }
+                    }
+                    if (plans.isEmpty() && folder != null) {
+                        item(key = "empty") { Text(s3.folderEmpty, color = c.textSub, modifier = Modifier.padding(vertical = 8.dp)) }
+                    }
                     items(plans, key = { it.id }) { plan ->
                         PlanCard(
                             plan = plan,
@@ -154,6 +180,11 @@ fun LibraryScreen(app: AppController) {
                                     onClick = { close(); startExport(app, plan, ui) { planToExport = plan } },
                                 )
                                 DropdownMenuItem(
+                                    text = { Text(s3.moveToFolder) },
+                                    leadingIcon = { Icon(Icons.Default.DriveFileMove, null) },
+                                    onClick = { close(); planToMove = plan },
+                                )
+                                DropdownMenuItem(
                                     text = { Text(s.archiveAction) },
                                     leadingIcon = { Icon(Icons.Default.Archive, null) },
                                     onClick = { close(); app.archivePlan(plan); ui.toast(s.archived) },
@@ -166,7 +197,7 @@ fun LibraryScreen(app: AppController) {
                             },
                         )
                     }
-                    if (archivedCount > 0) {
+                    if (archivedCount > 0 && folder == null) {
                         item(key = "archive") { ArchiveLink(archivedCount) { app.guardEdits { app.openArchive() } } }
                     }
                 }
@@ -179,10 +210,30 @@ fun LibraryScreen(app: AppController) {
                 FitText(s.createNewSpeech, maxSize = 18.sp, fontWeight = FontWeight.Medium)
             }
             Spacer(Modifier.height(8.dp))
-            OutlinedButton(onClick = { app.guardEdits { showQuick = true } }, modifier = Modifier.fillMaxWidth().height(48.dp)) {
-                Icon(Icons.Default.Timer, contentDescription = null, tint = c.textMain)
-                Spacer(Modifier.width(8.dp))
-                FitText(s.quickTimer, maxSize = 16.sp, fontWeight = FontWeight.Medium, color = c.textMain)
+            // Quick timer and meeting mode side by side (stacked in a very thin pane)
+            val quick: @Composable (Modifier) -> Unit = { m ->
+                OutlinedButton(onClick = { app.guardEdits { showQuick = true } }, modifier = m.height(48.dp), contentPadding = PaddingValues(horizontal = 10.dp)) {
+                    Icon(Icons.Default.Timer, contentDescription = null, tint = c.textMain)
+                    Spacer(Modifier.width(8.dp))
+                    FitText(s.quickTimer, maxSize = 16.sp, fontWeight = FontWeight.Medium, color = c.textMain)
+                }
+            }
+            val meeting: @Composable (Modifier) -> Unit = { m ->
+                OutlinedButton(onClick = { app.openMeeting() }, modifier = m.height(48.dp), contentPadding = PaddingValues(horizontal = 10.dp)) {
+                    Icon(Icons.Default.Groups, contentDescription = null, tint = c.textMain)
+                    Spacer(Modifier.width(8.dp))
+                    FitText(s3.meetingMode, maxSize = 16.sp, fontWeight = FontWeight.Medium, color = c.textMain)
+                }
+            }
+            if (veryNarrow) {
+                quick(Modifier.fillMaxWidth())
+                Spacer(Modifier.height(8.dp))
+                meeting(Modifier.fillMaxWidth())
+            } else {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    quick(Modifier.weight(1f))
+                    meeting(Modifier.weight(1f))
+                }
             }
         }
     }
@@ -197,20 +248,20 @@ fun LibraryScreen(app: AppController) {
     if (showImportChoice) {
         AlertDialog(
             onDismissRequest = { showImportChoice = false },
-            title = { Text(s.importTitle) },
+            title = { ClosableTitle(s.importTitle) { showImportChoice = false } },
             text = {
                 Column {
-                    ChoiceRow(Icons.Default.Description, s.importFromFile, s.importFromFileDesc) {
+                    ChoiceRow(Icons.Default.Description, s.importFromFile, s3.importFileDesc) {
                         showImportChoice = false
                         ui.pickDocument()
                     }
                     Spacer(Modifier.height(4.dp))
-                    ChoiceRow(Icons.Default.ContentPaste, s.importPaste, s.importPasteDesc) {
+                    ChoiceRow(Icons.Default.ContentPaste, s.importPaste, s3.importPasteOnly) {
                         showImportChoice = false
                         showPaste = true
                     }
                     Spacer(Modifier.height(12.dp))
-                    Text(s.dropHint, fontSize = 13.sp, color = c.textSub)
+                    Text(s3.importDropFile, fontSize = 13.sp, color = c.textSub)
                 }
             },
             confirmButton = {},
@@ -230,6 +281,142 @@ fun LibraryScreen(app: AppController) {
         ExportDialog(app, plan, onDismiss = { planToExport = null })
     }
     if (exportLibrary) ExportDialog(app, null, onDismiss = { exportLibrary = false })
+
+    planToMove?.let { plan ->
+        MoveToFolderDialog(app, plan, onDone = { planToMove = null })
+    }
+    if (newFolder) {
+        FolderNameDialog(title = s3.newFolder, initial = "", confirm = s3.create, onDismiss = { newFolder = false }) { name ->
+            newFolder = false
+            app.createFolder(name)?.let { app.openFolder(it.id) }
+        }
+    }
+    if (renameFolder && folder != null) {
+        FolderNameDialog(title = s3.renameFolder, initial = folder.name, confirm = s3.save, onDismiss = { renameFolder = false }) { name ->
+            renameFolder = false
+            app.renameFolder(folder.id, name)
+        }
+    }
+    if (deleteFolder && folder != null) {
+        AlertDialog(
+            onDismissRequest = { deleteFolder = false },
+            title = { ClosableTitle(s3.deleteFolderTitle(folder.name)) { deleteFolder = false } },
+            text = { Text(s3.deleteFolderText) },
+            confirmButton = {
+                Button(
+                    onClick = { deleteFolder = false; app.deleteFolder(folder.id) },
+                    colors = ButtonDefaults.buttonColors(containerColor = c.over, contentColor = c.onOver),
+                ) { Text(s.delete) }
+            },
+            dismissButton = { TextButton(onClick = { deleteFolder = false }) { Text(s.cancel, color = c.textMain) } },
+        )
+    }
+}
+
+/** A folder in the list: tap to open it. */
+@Composable
+private fun FolderCard(folder: Folder, count: Int, onOpen: () -> Unit) {
+    val s3 = LocalStrings3.current
+    val c = AppTheme.colors
+    Card(onClick = onOpen, modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+        Row(Modifier.fillMaxWidth().padding(start = 16.dp, top = 12.dp, bottom = 12.dp, end = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.Folder, contentDescription = null, tint = c.textSub, modifier = Modifier.size(26.dp))
+            Spacer(Modifier.width(14.dp))
+            Column(Modifier.weight(1f)) {
+                Text(folder.name, fontSize = 20.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(s3.folderCount(count), color = c.textSub, fontSize = 14.sp)
+            }
+            Icon(Icons.Default.ChevronRight, contentDescription = null, tint = c.textSub)
+        }
+    }
+}
+
+/** "⋮" in an open folder: rename or delete it. */
+@Composable
+private fun FolderMenu(onRename: () -> Unit, onDelete: () -> Unit) {
+    val s = LocalStrings.current
+    val s3 = LocalStrings3.current
+    var open by remember { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { open = true }) {
+            Icon(Icons.Default.MoreVert, contentDescription = s.moreOptions, tint = AppTheme.colors.textMain)
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            DropdownMenuItem(text = { Text(s3.renameFolder) }, leadingIcon = { Icon(Icons.Default.Edit, null) }, onClick = { open = false; onRename() })
+            DropdownMenuItem(text = { Text(s3.deleteFolder) }, leadingIcon = { Icon(Icons.Default.Delete, null) }, onClick = { open = false; onDelete() })
+        }
+    }
+}
+
+@Composable
+private fun FolderNameDialog(title: String, initial: String, confirm: String, onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
+    val s = LocalStrings.current
+    val s3 = LocalStrings3.current
+    val c = AppTheme.colors
+    var name by remember { mutableStateOf(initial) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { ClosableTitle(title, onDismiss) },
+        text = {
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it.take(60) },
+                label = { Text(s3.folderName) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        },
+        confirmButton = { Button(onClick = { onConfirm(name) }, enabled = name.isNotBlank()) { Text(confirm) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(s.cancel, color = c.textMain) } },
+    )
+}
+
+/** Pick the folder for a speech (or none), or make a new one for it. */
+@Composable
+private fun MoveToFolderDialog(app: AppController, plan: SpeechPlan, onDone: () -> Unit) {
+    val s = LocalStrings.current
+    val s3 = LocalStrings3.current
+    val c = AppTheme.colors
+    var makeNew by remember { mutableStateOf(false) }
+    if (makeNew) {
+        FolderNameDialog(title = s3.newFolder, initial = "", confirm = s3.create, onDismiss = onDone) { name ->
+            app.createFolder(name)?.let { app.moveToFolder(plan, it.id) }
+            onDone()
+        }
+        return
+    }
+    val current = app.folderById(plan.folderId)?.id
+    AlertDialog(
+        onDismissRequest = onDone,
+        title = { ClosableTitle(s3.moveToFolder, onDone) },
+        text = {
+            Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState())) {
+                FolderOption(s3.noFolder, current == null) { app.moveToFolder(plan, null); onDone() }
+                app.sortedFolders.forEach { f ->
+                    FolderOption(f.name, current == f.id) { app.moveToFolder(plan, f.id); onDone() }
+                }
+                TextButton(onClick = { makeNew = true }, modifier = Modifier.padding(top = 4.dp)) {
+                    Icon(Icons.Default.CreateNewFolder, contentDescription = null, tint = c.textMain)
+                    Spacer(Modifier.width(8.dp))
+                    Text(s3.newFolder, color = c.textMain)
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = { TextButton(onClick = onDone) { Text(s.cancel, color = c.textMain) } },
+    )
+}
+
+@Composable
+private fun FolderOption(label: String, selected: Boolean, onClick: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        RadioButton(selected = selected, onClick = null)
+        Spacer(Modifier.width(12.dp))
+        Text(label, maxLines = 2, overflow = TextOverflow.Ellipsis)
+    }
 }
 
 /** One speech in the list. Its actions sit in a "⋮" menu, so the title keeps its room in narrow panes. */
@@ -333,7 +520,7 @@ internal fun ChoiceRow(icon: androidx.compose.ui.graphics.vector.ImageVector, ti
     }
 }
 
-/** Paste an exported speech (imported as is), or the speech text itself (segments are suggested). */
+/** Paste an exported speech or library backup. */
 @Composable
 private fun PasteDialog(app: AppController, onDismiss: () -> Unit) {
     val s = LocalStrings.current
@@ -342,12 +529,12 @@ private fun PasteDialog(app: AppController, onDismiss: () -> Unit) {
     var text by remember { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(s.importTitle) },
+        title = { ClosableTitle(s.importTitle, onDismiss) },
         text = {
             OutlinedTextField(
                 value = text,
                 onValueChange = { text = it },
-                label = { Text(s.importHint) },
+                label = { Text(LocalStrings3.current.importPasteHint) },
                 modifier = Modifier.fillMaxWidth().height(180.dp),
             )
         },
@@ -355,7 +542,7 @@ private fun PasteDialog(app: AppController, onDismiss: () -> Unit) {
             Button(
                 enabled = text.isNotBlank(),
                 onClick = {
-                    if (app.importText(text)) onDismiss() else ui.toast(s.importNothing)
+                    if (app.importText(text)) onDismiss() else ui.toast(app.strings3.importPasteOnly)
                 },
             ) { Text(s.importLabel) }
         },
@@ -453,7 +640,7 @@ private fun QuickTimerDialog(onStart: (Int) -> Unit, onDismiss: () -> Unit) {
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(s.quickTimer) },
+        title = { ClosableTitle(s.quickTimer, onDismiss) },
         text = {
             Column {
                 ChoiceChips(

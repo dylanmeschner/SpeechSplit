@@ -2,10 +2,13 @@ package no.srrlsm.speechsplit.core
 
 import kotlin.math.abs
 
-/** "04:30", "-00:05". Plain Kotlin (no String.format), so it works on every platform. */
+/** "04:30", "-00:05", and "1:45:00" from an hour up (a whole meeting). Plain Kotlin (no String.format). */
 fun formatTime(seconds: Int): String {
     val a = abs(seconds)
     val sign = if (seconds < 0) "-" else ""
+    if (a >= 3600) {
+        return sign + (a / 3600) + ":" + (a % 3600 / 60).toString().padStart(2, '0') + ":" + (a % 60).toString().padStart(2, '0')
+    }
     return sign + (a / 60).toString().padStart(2, '0') + ":" + (a % 60).toString().padStart(2, '0')
 }
 

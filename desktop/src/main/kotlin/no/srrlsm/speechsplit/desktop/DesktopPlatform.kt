@@ -1,10 +1,9 @@
 package no.srrlsm.speechsplit.desktop
 
 import no.srrlsm.speechsplit.core.AppSettings
-import no.srrlsm.speechsplit.core.DocBlock
-import no.srrlsm.speechsplit.jvm.DocumentReader
-import org.apache.pdfbox.Loader
-import org.apache.pdfbox.text.PDFTextStripper
+import no.srrlsm.speechsplit.core.FetchResult
+import no.srrlsm.speechsplit.core.Folder
+import no.srrlsm.speechsplit.core.MeetingProgram
 import no.srrlsm.speechsplit.core.AppStore
 import no.srrlsm.speechsplit.core.PlatformServices
 import no.srrlsm.speechsplit.core.ReleaseInfo
@@ -49,6 +48,15 @@ class DesktopStore(private val dir: File = appDataDir()) : AppStore {
     private val plansFile = File(dir, "speeches.json")
     private val runsFile = File(dir, "history.json")
     private val settingsFile = File(dir, "settings.json")
+    private val foldersFile = File(dir, "folders.json")
+    private fun meetingFile(language: String) = File(dir, "meetings-$language.json")
+
+    override fun loadFolders(): List<Folder> = read(foldersFile)?.let { JsonCodec.foldersFromJson(it) } ?: emptyList()
+    override fun saveFolders(folders: List<Folder>) = write(foldersFile, JsonCodec.foldersToJson(folders))
+    override fun loadMeetingCache(language: String): String? = read(meetingFile(language))
+    override fun saveMeetingCache(language: String, text: String) = write(meetingFile(language), text)
+    override fun readMeetingProgram(text: String): MeetingProgram? = JsonCodec.meetingProgramFromJson(text)
+    override fun hasSavedSettings(): Boolean = settingsFile.exists()
 
     override fun loadPlans(): List<SpeechPlan> =
         read(plansFile)?.let { runCatching { JsonCodec.plansFromJson(it).first }.getOrNull() } ?: emptyList()
@@ -69,8 +77,8 @@ class DesktopStore(private val dir: File = appDataDir()) : AppStore {
 
     override fun exportPlanFile(plan: SpeechPlan, runs: List<PracticeRun>): String = JsonCodec.planFileText(plan, runs)
 
-    override fun exportLibraryFile(plans: List<SpeechPlan>, runs: List<PracticeRun>): String =
-        JsonCodec.libraryFileText(plans, runs)
+    override fun exportLibraryFile(plans: List<SpeechPlan>, runs: List<PracticeRun>, folders: List<Folder>): String =
+        JsonCodec.libraryFileText(plans, runs, folders)
 
     override fun readSpeechFile(text: String, fallbackTitle: String): SpeechFile? =
         JsonCodec.readSpeechFile(text, fallbackTitle)
@@ -136,16 +144,13 @@ class DesktopPlatform : PlatformServices {
         get() = FreezeWatch.logFile.takeIf { it.exists() && it.length() > 0 }
             ?.let { "Freeze log (please attach): ${it.absolutePath}" }
 
-    /** PDF text through Apache PDFBox; Word, OpenDocument and text through the shared reader. */
-    override fun readDocument(fileName: String, bytes: ByteArray): List<DocBlock>? =
-        DocumentReader.read(fileName, bytes) { pdf ->
-            Loader.loadPDF(pdf).use { doc ->
-                PDFTextStripper().apply {
-                    sortByPosition = true
-                    paragraphEnd = "\n\n"
-                }.getText(doc)
-            }
-        }
+    override suspend fun fetchText(url: String): FetchResult? = UpdateClient.fetchText(url)
+
+    override fun localDateIso(epochMs: Long): String {
+        val c = java.util.Calendar.getInstance()
+        c.timeInMillis = epochMs
+        return "%04d-%02d-%02d".format(Locale.ROOT, c.get(java.util.Calendar.YEAR), c.get(java.util.Calendar.MONTH) + 1, c.get(java.util.Calendar.DAY_OF_MONTH))
+    }
     override fun monotonicMs(): Long = System.nanoTime() / 1_000_000
     override fun epochMs(): Long = System.currentTimeMillis()
     override fun formatDateTime(epochMs: Long): String =

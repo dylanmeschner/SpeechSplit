@@ -13,7 +13,13 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.abs
 
-enum class AppScreen { LIBRARY, ARCHIVE, SETTINGS, EDIT, READY, TIMER, HISTORY }
+enum class AppScreen { LIBRARY, ARCHIVE, SETTINGS, EDIT, READY, TIMER, HISTORY, MEETING }
+
+/** "Practise one part": which speech and part, and the time of every attempt so far. */
+data class DrillState(val planId: String, val index: Int, val attempts: List<Int> = emptyList())
+
+/** Loading state of one language's meeting programs. */
+enum class MeetingLoad { IDLE, LOADING, OK, FAILED, MISSING }
 
 /** A one-off signal for the UI (e.g. flash the screen edge). A new id means a new event. */
 data class AlertEvent(val id: Int, val status: TimeStatus)
@@ -61,6 +67,65 @@ class AppController(
     val visiblePlans: List<SpeechPlan>
         get() = sortPlans(speechPlans.filterNot { it.archived })
 
+    // --- Folders --------------------------------------------------------------
+    var folders by mutableStateOf(store.loadFolders())
+        private set
+
+    /** The folder open in the library, or null for the library itself. */
+    var openFolderId by mutableStateOf<String?>(null)
+        private set
+
+    val openFolder: Folder? get() = folderById(openFolderId)
+
+    fun folderById(id: String?): Folder? = if (id == null) null else folders.firstOrNull { it.id == id }
+
+    val sortedFolders: List<Folder>
+        get() = folders.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name.trim() })
+
+    /** Speeches in a folder, or (null) those in none. A speech whose folder is gone counts as in none. */
+    fun plansIn(folderId: String?): List<SpeechPlan> =
+        visiblePlans.filter { if (folderId != null) it.folderId == folderId else folderById(it.folderId) == null }
+
+    fun openFolder(id: String?) {
+        guardEdits {
+            openFolderId = folderById(id)?.id
+            backToLibrary()
+        }
+    }
+
+    fun createFolder(name: String): Folder? {
+        val clean = name.trim().take(60)
+        if (clean.isBlank()) return null
+        val folder = Folder(name = clean, createdAtEpochMs = platform.epochMs())
+        folders = folders + folder
+        store.saveFolders(folders)
+        return folder
+    }
+
+    fun renameFolder(id: String, name: String) {
+        val clean = name.trim().take(60)
+        if (clean.isBlank()) return
+        folders = folders.map { if (it.id == id) it.copy(name = clean) else it }
+        store.saveFolders(folders)
+    }
+
+    /** The speeches in it go back to the library; nothing is deleted. */
+    fun deleteFolder(id: String) {
+        folders = folders.filterNot { it.id == id }
+        store.saveFolders(folders)
+        for (i in speechPlans.indices) {
+            if (speechPlans[i].folderId == id) speechPlans[i] = speechPlans[i].copy(folderId = null)
+        }
+        store.savePlans(speechPlans)
+        if (openFolderId == id) openFolderId = null
+    }
+
+    fun moveToFolder(plan: SpeechPlan, folderId: String?) {
+        val target = folderById(folderId)
+        replacePlan(plan.id) { it.copy(folderId = target?.id) }
+        message = if (target != null) strings3.movedTo(target.name) else strings3.movedOut
+    }
+
     val archivedPlans: List<SpeechPlan>
         get() = sortPlans(speechPlans.filter { it.archived })
 
@@ -96,6 +161,9 @@ class AppController(
         private set
 
     val strings: Strings get() = stringsFor(settings.language, platform.systemLanguage)
+
+    /** Texts added in 3.0 (Strings3.kt). */
+    val strings3: Strings3 get() = strings3For(settings.language, platform.systemLanguage)
 
     /** "en", "de" or "no": which part of the patch notes to show. */
     val languageCode: String
@@ -163,6 +231,8 @@ class AppController(
             SpeechPlan(
                 title = strings.defaultSpeechTitle,
                 segments = listOf(SpeechSegment(title = strings.defaultFirstSegment, targetSeconds = 120)),
+                // Made inside a folder: it goes there
+                folderId = openFolder?.id,
             ),
             returnTo = AppScreen.LIBRARY,
         )
@@ -170,6 +240,7 @@ class AppController(
 
     fun openPlan(plan: SpeechPlan) {
         isQuickTimer = false
+        drill = null
         activePlan = plan
         currentScreen = AppScreen.READY
     }
@@ -203,7 +274,14 @@ class AppController(
     fun backToLibrary() {
         activePlan = null
         isQuickTimer = false
+        drill = null
         currentScreen = AppScreen.LIBRARY
+    }
+
+    /** The Speeches tab: back to the library itself, out of any folder. */
+    fun libraryTab() {
+        openFolderId = null
+        backToLibrary()
     }
 
     fun openArchive() {
@@ -219,11 +297,24 @@ class AppController(
     }
 
     fun openHistory() {
+        historyFilter = null
         if (activePlan != null) currentScreen = AppScreen.HISTORY
     }
 
     fun closeHistory() {
-        currentScreen = if (activePlan != null) AppScreen.READY else AppScreen.LIBRARY
+        currentScreen = when {
+            activePlan?.meeting != null -> { activePlan = null; AppScreen.MEETING }
+            activePlan != null -> AppScreen.READY
+            else -> AppScreen.LIBRARY
+        }
+    }
+
+    /** History screen filter: all runs, only practice, or only real speeches. */
+    var historyFilter by mutableStateOf<Boolean?>(null) // null all, false practice, true live
+        private set
+
+    fun filterHistory(live: Boolean?) {
+        historyFilter = live
     }
 
     // --- Editing --------------------------------------------------------------
@@ -300,7 +391,7 @@ class AppController(
     fun exportFile(plan: SpeechPlan?, scope: ExportScope): Pair<String, String> = when {
         scope == ExportScope.LIBRARY || plan == null ->
             "Speech Split ${isoDate(platform.epochMs())}.$SPEECH_FILE_EXTENSION" to
-                store.exportLibraryFile(speechPlans.toList(), runs)
+                store.exportLibraryFile(speechPlans.toList(), runs, folders)
         scope == ExportScope.SPEECH_WITH_HISTORY -> speechFileName(plan.title) to store.exportPlanFile(plan, runsFor(plan.id))
         else -> speechFileName(plan.title) to store.exportPlanFile(plan)
     }
@@ -332,6 +423,7 @@ class AppController(
             createdAtEpochMs = platform.epochMs(),
             lastUsedAtEpochMs = history.maxOfOrNull { it.finishedAtEpochMs } ?: 0L,
             archived = false,
+            folderId = null,
         )
         speechPlans.add(copy)
         store.savePlans(speechPlans)
@@ -366,22 +458,29 @@ class AppController(
         val file = pendingLibrary ?: return
         pendingLibrary = null
         val count: Int
+        // Meeting history isn't tied to a speech, so it travels with the library too
+        fun isMeeting(r: PracticeRun) = r.planId == MIDWEEK_MEETING_ID || r.planId == WEEKEND_MEETING_ID
         if (replace) {
+            openFolderId = null
             backToLibrary()
             speechPlans.clear()
             speechPlans.addAll(file.plans)
+            folders = file.folders
             val ids = file.plans.map { it.id }.toSet()
-            runs = capRuns(file.runs.filter { it.planId in ids })
+            runs = capRuns(file.runs.filter { it.planId in ids || isMeeting(it) })
             count = file.plans.size
         } else {
             val have = speechPlans.map { it.id }.toSet()
             val added = file.plans.filter { it.id !in have }
             speechPlans.addAll(added)
+            val haveFolders = folders.map { it.id }.toSet()
+            folders = folders + file.folders.filter { it.id !in haveFolders }
             val ids = speechPlans.map { it.id }.toSet()
             val haveRuns = runs.map { it.id }.toSet()
-            runs = capRuns(runs + file.runs.filter { it.id !in haveRuns && it.planId in ids })
+            runs = capRuns(runs + file.runs.filter { it.id !in haveRuns && (it.planId in ids || isMeeting(it)) })
             count = added.size
         }
+        store.saveFolders(folders)
         store.savePlans(speechPlans)
         store.saveRuns(runs)
         message = strings.importedCount(count)
@@ -394,75 +493,17 @@ class AppController(
             .groupBy { it.planId }.values.flatMap { it.take(MaxRunsPerPlan) }
             .sortedByDescending { it.finishedAtEpochMs }
 
-    // --- Importing a document (PDF, Word, text) ------------------------------------
-    /** A read document waiting for the user to look at the suggested segments. */
-    var importDraft by mutableStateOf<ImportDraft?>(null)
-        private set
+    // --- Importing a file or pasted text ------------------------------------------------
+    // Only Speech Split files and exported text. (Reading PDF and Word documents was removed in 3.0:
+    // everyone writes their notes differently, so the suggested parts were rarely right.)
 
-    /** True while a document is being read. */
-    var importBusy by mutableStateOf(false)
-        private set
+    /** Pasted or shared text: an exported speech or library backup. False if it isn't one. */
+    fun importText(text: String): Boolean = importPlan(text.removePrefix("\uFEFF").trim())
 
-    fun dismissImportDraft() {
-        importDraft = null
-    }
-
-    /**
-     * Pasted text: an exported speech is imported as it is; any other text is treated as the
-     * speech itself, and segments are suggested. Returns false if there's nothing to work with.
-     */
-    fun importText(text: String): Boolean {
-        if (importPlan(text)) return true
-        val blocks = blocksFromPlainText(text)
-        if (blocks.none { !it.heading && countWords(it.text) > 0 }) return false
-        importDraft = ImportDraft(title = guessTitle(blocks, strings.importedSpeech), blocks = blocks)
-        return true
-    }
-
-    /** A file dropped on the app, picked, or shared to it. Reads it in the background. */
+    /** A file dropped on the app, picked, or shared to it. */
     fun importDocument(fileName: String, bytes: ByteArray) {
-        if (importBusy) return
-        // A file exported from Speech Split is plain JSON: import it directly
-        val asText = bytes.takeIf { it.size < 1_000_000 }?.decodeToString()?.trim()
-        if (asText != null && asText.removePrefix("\uFEFF").startsWith("{") && importPlan(asText.removePrefix("\uFEFF"))) return
-        importBusy = true
-        scope.launch {
-            val blocks = try {
-                withContext(Dispatchers.Default) { platform.readDocument(fileName, bytes) }
-            } catch (e: Throwable) {
-                emptyList()
-            }
-            importBusy = false
-            when {
-                blocks == null -> message = strings.importUnsupported
-                blocks.none { !it.heading && countWords(it.text) > 0 } -> message = strings.importUnreadable
-                else -> {
-                    val fromName = fileName.substringBeforeLast('.').replace('_', ' ').trim()
-                    importDraft = ImportDraft(title = guessTitle(blocks, fromName.ifBlank { strings.importedSpeech }), blocks = blocks)
-                }
-            }
-        }
-    }
-
-    /** A first heading followed straight by another heading is the document's title. */
-    private fun guessTitle(blocks: List<DocBlock>, fallback: String): String {
-        val first = blocks.getOrNull(0)
-        val second = blocks.getOrNull(1)
-        return if (first != null && first.heading && second != null && second.heading) first.text else fallback
-    }
-
-    /** The user accepted the suggestion: open it in the editor, where everything can still be changed. */
-    fun acceptImport(title: String, segments: List<SuggestedSegment>, wordsPerMinute: Int) {
-        if (segments.isEmpty()) return
-        importDraft = null
-        if (wordsPerMinute != settings.wordsPerMinute) updateSettings { it.copy(wordsPerMinute = wordsPerMinute) }
-        startEditing(
-            SpeechPlan(
-                title = title.trim().ifBlank { strings.importedSpeech },
-                segments = segments.map { SpeechSegment(title = it.title, targetSeconds = it.seconds) },
-            ),
-            returnTo = AppScreen.LIBRARY,
-        )
+        val text = bytes.takeIf { it.size <= MAX_IMPORT_BYTES }?.decodeToString()?.removePrefix("\uFEFF")?.trim()
+        if (text == null || !text.startsWith("{") || !importPlan(text)) message = strings3.importOnlyFiles
     }
 
     // --- History --------------------------------------------------------------
@@ -492,8 +533,21 @@ class AppController(
             segments = plan.segments.mapIndexed { i, seg ->
                 RunSegment(seg.id, seg.title, seg.targetSeconds, secs.getOrElse(i) { 0 })
             },
+            live = plan.meeting != null || settings.runLive,
+            meeting = plan.meeting?.kind,
+            bufferSeconds = plan.meeting?.bufferSeconds ?: 0,
         )
     }
+
+    /** The run just finished (as saved), for the summary on the finished screen. */
+    fun finishedRun(): PracticeRun? = recordedRunId?.let { id -> runs.firstOrNull { it.id == id } } ?: currentRunSnapshot()
+
+    /** The run before [run] of the same speech or meeting, to compare with. */
+    fun previousRun(run: PracticeRun): PracticeRun? =
+        runsFor(run.planId).firstOrNull { it.id != run.id && it.finishedAtEpochMs < run.finishedAtEpochMs }
+
+    fun summaryOf(run: PracticeRun): RunSummary =
+        buildSummary(run, previousRun(run), settings.celebrateTolerance, strings3)
 
     /** Id of the run saved when FINISH was pressed, so an "undo" can take it back out. */
     private var recordedRunId: String? = null
@@ -503,7 +557,7 @@ class AppController(
      * so closing the app on the finished screen lost the run).
      */
     private fun recordRun() {
-        if (isQuickTimer || !engine.isFinished || recordedRunId != null) return
+        if (isQuickTimer || activePlan?.isDrill == true || !engine.isFinished || recordedRunId != null) return
         val run = currentRunSnapshot() ?: return
         recordedRunId = run.id
         val forPlan = (listOf(run) + runsFor(run.planId)).take(MaxRunsPerPlan)
@@ -541,6 +595,7 @@ class AppController(
     /** Whether the finished run landed on the target (within the tolerance chosen in Settings). */
     fun isPerfectFinish(): Boolean {
         val plan = activePlan ?: return false
+        if (plan.meeting != null) return false // a meeting is about ending in time, not on the second
         val tolerance = settings.celebrateTolerance
         return engine.isFinished && tolerance >= 0 && abs(finalDiffSeconds(plan)) <= tolerance
     }
@@ -552,7 +607,7 @@ class AppController(
         celebrating = false
         dndWarned = false
         recordedRunId = null
-        if (!isQuickTimer) {
+        if (!isQuickTimer && plan.meeting == null && !plan.isDrill) {
             // For "last used" sorting
             replacePlan(plan.id) { it.copy(lastUsedAtEpochMs = platform.epochMs()) }
         }
@@ -581,6 +636,7 @@ class AppController(
         if (engine.next()) {
             celebrating = isPerfectFinish()
             recordRun()
+            drill?.let { d -> if (activePlan?.isDrill == true) drill = d.copy(attempts = d.attempts + engine.totalElapsedSeconds()) }
         }
         afterChange()
     }
@@ -589,7 +645,10 @@ class AppController(
     fun previousSegment() {
         if (!engine.isActive) return
         celebrating = false
-        if (engine.isFinished) unrecordRun()
+        if (engine.isFinished) {
+            unrecordRun()
+            drill?.let { d -> if (activePlan?.isDrill == true) drill = d.copy(attempts = d.attempts.dropLast(1)) }
+        }
         engine.previous()
         afterChange()
     }
@@ -601,8 +660,171 @@ class AppController(
         engine.stop()
         celebrating = false
         afterChange()
-        if (isQuickTimer) backToLibrary() else currentScreen = AppScreen.READY
+        val plan = activePlan
+        when {
+            isQuickTimer -> backToLibrary()
+            plan?.meeting != null -> { activePlan = null; currentScreen = AppScreen.MEETING }
+            plan?.isDrill == true -> {
+                val base = drill?.let { d -> speechPlans.firstOrNull { it.id == d.planId } }
+                drill = null
+                if (base != null) { activePlan = base; currentScreen = AppScreen.READY } else backToLibrary()
+            }
+            else -> currentScreen = AppScreen.READY
+        }
     }
+
+    // --- Practice: real speech or practice, and one part again and again ----------------
+    fun setRunLive(live: Boolean) = updateSettings { it.copy(runLive = live) }
+
+    /** Practising one part: which one, and the attempts so far. Null otherwise. */
+    var drill by mutableStateOf<DrillState?>(null)
+        private set
+
+    /** Starts a one-segment run of part [index] of the open speech. Not saved in the history. */
+    fun startDrill(index: Int) {
+        val base = activePlan?.takeIf { !it.isDrill && it.meeting == null } ?: return
+        startDrillOf(base, index, emptyList())
+    }
+
+    /** Another attempt at the same part. */
+    fun drillAgain() {
+        val d = drill ?: return
+        val base = speechPlans.firstOrNull { it.id == d.planId } ?: return
+        engine.stop()
+        startDrillOf(base, d.index, d.attempts)
+    }
+
+    private fun startDrillOf(base: SpeechPlan, index: Int, attempts: List<Int>) {
+        val seg = base.segments.getOrNull(index) ?: return
+        drill = DrillState(base.id, index, attempts)
+        activePlan = SpeechPlan(
+            id = "drill",
+            title = "${base.title} · ${strings3.drillTitle}",
+            segments = listOf(seg.copy()),
+            isDrill = true,
+        )
+        isQuickTimer = false
+        startTimer()
+    }
+
+    // --- Meeting mode ------------------------------------------------------------------
+    // The week's program comes from the website (docs/meetings/<lang>.json, made from the
+    // meeting workbook with tools/workbook_to_json.py). The last copy is kept, so it works offline.
+
+    /** Weeks from this week on the meeting screen (0 = this week). */
+    var meetingWeekOffset by mutableStateOf(0)
+        private set
+
+    // Plain map (read during drawing, so it must not be Compose state); the counter tells the UI it changed
+    private val meetingPrograms = HashMap<String, MeetingProgram?>()
+    private var meetingProgramsVersion by mutableStateOf(0)
+    var meetingLoad by mutableStateOf<Map<String, MeetingLoad>>(emptyMap())
+        private set
+
+    /** "no", "en" or "de": the language of the program (chosen on the meeting screen, or the app's). */
+    val meetingLanguage: String
+        get() = settings.meetingLanguage.takeIf { it in MEETING_LANGUAGES } ?: languageCode
+
+    fun meetingProgram(lang: String): MeetingProgram? {
+        meetingProgramsVersion // read, so screens update when a new program arrives
+        if (lang !in meetingPrograms) meetingPrograms[lang] = store.loadMeetingCache(lang)?.let { store.readMeetingProgram(it) }
+        return meetingPrograms[lang]
+    }
+
+    fun openMeeting() {
+        guardEdits {
+            activePlan = null
+            isQuickTimer = false
+            drill = null
+            currentScreen = AppScreen.MEETING
+            loadMeetings(meetingLanguage)
+        }
+    }
+
+    /** Fetches the newest programs for [lang] (once per session, unless [force]). */
+    fun loadMeetings(lang: String, force: Boolean = false) {
+        val state = meetingLoad[lang] ?: MeetingLoad.IDLE
+        if (state == MeetingLoad.LOADING || (state == MeetingLoad.OK && !force)) return
+        meetingProgram(lang) // the saved copy, while the new one loads
+        meetingLoad = meetingLoad + (lang to MeetingLoad.LOADING)
+        scope.launch {
+            val result = platform.fetchText(MEETINGS_URL + "$lang.json")
+            val program = result?.text?.let { store.readMeetingProgram(it) }
+            meetingLoad = meetingLoad + (lang to when {
+                program != null -> MeetingLoad.OK
+                result?.status == 404 -> MeetingLoad.MISSING
+                else -> MeetingLoad.FAILED
+            })
+            if (program != null && result != null) {
+                meetingPrograms[lang] = program
+                meetingProgramsVersion++
+                store.saveMeetingCache(lang, result.text)
+            }
+        }
+    }
+
+    fun setMeetingKind(kind: MeetingKind) = updateSettings { it.copy(meetingKind = kind) }
+
+    fun setMeetingLanguage(lang: String) {
+        updateSettings { it.copy(meetingLanguage = lang) }
+        loadMeetings(lang)
+    }
+
+    fun changeMeetingWeek(by: Int) {
+        meetingWeekOffset = if (by == 0) 0 else meetingWeekOffset + by
+    }
+
+    /** Monday of the week shown on the meeting screen, "2026-11-02". */
+    val meetingWeekStart: String
+        get() = mondayOf(platform.localDateIso(platform.epochMs()), meetingWeekOffset)
+
+    /** The meeting picked on the meeting screen, or null when there's no program for that week. */
+    fun chosenMeeting(): SpeechPlan? {
+        val lang = meetingLanguage
+        val program3 = strings3ForCode(lang)
+        if (settings.meetingKind == MeetingKind.WEEKEND) return weekendMeeting(program3, strings3.meetingWeekendTitle)
+        val week = meetingProgram(lang)?.weeks?.firstOrNull { it.start == meetingWeekStart && it.parts.isNotEmpty() } ?: return null
+        return midweekMeeting(week, program3, strings3.meetingMidweekTitle(weekLabel(week.start, languageCode)))
+    }
+
+    fun startMeeting() {
+        val plan = chosenMeeting() ?: return
+        activePlan = plan
+        isQuickTimer = false
+        drill = null
+        startTimer()
+    }
+
+    /** History of the meeting kind picked on the meeting screen. */
+    fun openMeetingHistory() {
+        val kind = settings.meetingKind
+        activePlan = chosenMeeting() ?: SpeechPlan(
+            id = if (kind == MeetingKind.WEEKEND) WEEKEND_MEETING_ID else MIDWEEK_MEETING_ID,
+            title = strings3.meetingMidweek,
+            meeting = MeetingInfo(kind, if (kind == MeetingKind.MIDWEEK) MIDWEEK_BUFFER_SECONDS else 0),
+        )
+        historyFilter = null
+        currentScreen = AppScreen.HISTORY
+    }
+
+    // --- Introduction and "what's new" ---------------------------------------------------
+    /** True on the very first start: show the introduction cards. */
+    var showTutorial by mutableStateOf(false)
+        private set
+
+    /** True on the first start after an update: show what's new. */
+    var showWhatsNew by mutableStateOf(false)
+        private set
+
+    fun openTutorial() { showTutorial = true }
+    fun openWhatsNew() { showWhatsNew = true }
+
+    fun tutorialDone() {
+        showTutorial = false
+        if (!settings.tutorialSeen) updateSettings { it.copy(tutorialSeen = true) }
+    }
+
+    fun whatsNewDone() { showWhatsNew = false }
 
     // --- Version and updates --------------------------------------------------
     val appVersion: String get() = platform.appVersion
@@ -735,5 +957,16 @@ class AppController(
     init {
         // Runs last, after everything above is set up
         if (settings.autoUpdateCheck) checkForUpdates()
+
+        // New users get the introduction; people updating from an older version get "what's new"
+        val hadData = speechPlans.isNotEmpty() || runs.isNotEmpty() || store.hasSavedSettings()
+        if (!hadData && !settings.tutorialSeen) {
+            showTutorial = true
+        } else if (settings.lastSeenVersion != appVersion) {
+            showWhatsNew = true
+        }
+        if (settings.lastSeenVersion != appVersion || (hadData && !settings.tutorialSeen)) {
+            updateSettings { it.copy(lastSeenVersion = appVersion, tutorialSeen = it.tutorialSeen || hadData) }
+        }
     }
 }

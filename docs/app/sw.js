@@ -1,9 +1,7 @@
 // Speech Split web version: works offline once it has been opened.
 // Raise VERSION whenever a file below changes, so browsers pick up the new version.
-var VERSION = "speechsplit-web-2.3";
-var CORE = ["./", "index.html", "app.js", "import.js", "strings.js", "manifest.webmanifest", "icon-192.png", "icon-512.png", "apple-touch-icon.png"];
-// The PDF reader is big, so it is only stored after the first PDF import
-var LAZY = ["vendor/pdf.min.js", "vendor/pdf.worker.min.js"];
+var VERSION = "speechsplit-web-3.0";
+var CORE = ["./", "index.html", "app.js", "strings.js", "strings3.js", "manifest.webmanifest", "icon-192.png", "icon-512.png", "apple-touch-icon.png"];
 
 self.addEventListener("install", function (e) {
   e.waitUntil(caches.open(VERSION).then(function (c) { return c.addAll(CORE); }).then(function () { return self.skipWaiting(); }));
@@ -15,21 +13,11 @@ self.addEventListener("activate", function (e) {
   }).then(function () { return self.clients.claim(); }));
 });
 
-// Network first for the app itself (so updates arrive at once), cache when offline.
-// Cache first for the PDF reader, which never changes.
+// Network first (so updates and new meeting programs arrive at once), cache when offline.
+// The meeting programs (../meetings/*.json) are also kept by the app itself.
 self.addEventListener("fetch", function (e) {
   var url = new URL(e.request.url);
   if (e.request.method !== "GET" || url.origin !== location.origin) return;
-  var lazy = LAZY.some(function (p) { return url.pathname.endsWith(p); });
-  if (lazy) {
-    e.respondWith(caches.match(e.request).then(function (hit) {
-      return hit || fetch(e.request).then(function (res) {
-        if (res.ok) { var copy = res.clone(); caches.open(VERSION).then(function (c) { c.put(e.request, copy); }); }
-        return res;
-      });
-    }));
-    return;
-  }
   e.respondWith(fetch(e.request).then(function (res) {
     if (res.ok) { var copy = res.clone(); caches.open(VERSION).then(function (c) { c.put(e.request, copy); }); }
     return res;

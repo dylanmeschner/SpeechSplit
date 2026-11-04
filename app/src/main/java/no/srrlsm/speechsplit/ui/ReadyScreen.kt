@@ -15,6 +15,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import no.srrlsm.speechsplit.core.AppController
+import no.srrlsm.speechsplit.core.formatTime
 import no.srrlsm.speechsplit.core.summaryOf
 import no.srrlsm.speechsplit.ui.theme.AppTheme
 
@@ -28,6 +29,8 @@ fun ReadyScreen(app: AppController) {
     val ui = LocalUiActions.current
     val wide = LocalWideLayout.current
     var showExport by remember { mutableStateOf(false) }
+    var showDrill by remember { mutableStateOf(false) }
+    val s3 = LocalStrings3.current
     AppBackHandler { app.backToLibrary() }
 
     // Scales with the split-screen pane, like the timer screen does
@@ -64,7 +67,19 @@ fun ReadyScreen(app: AppController) {
                 Spacer(Modifier.height(8.dp))
                 Text(s.summaryOf(plan), fontSize = (18 * scale).sp, color = c.textSub, textAlign = TextAlign.Center)
 
-                Spacer(Modifier.height(if (shortPane) 24.dp else 56.dp))
+                Spacer(Modifier.height(if (shortPane) 16.dp else 40.dp))
+
+                // Practice or a real speech: real ones are marked in the history
+                Column(Modifier.fillMaxWidth(if (narrow) 1f else 0.8f).widthIn(max = 420.dp)) {
+                    SegmentedChoice(
+                        options = listOf(false to s3.modePractice, true to s3.modeLive),
+                        selected = app.settings.runLive,
+                        onSelect = { app.setRunLive(it) },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Text(s3.modeDesc, fontSize = 13.sp, color = c.textSub, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(top = 6.dp))
+                }
+                Spacer(Modifier.height(if (shortPane) 12.dp else 18.dp))
 
                 Button(
                     onClick = { app.startTimer() },
@@ -97,6 +112,9 @@ fun ReadyScreen(app: AppController) {
                     TextButton(onClick = { app.openHistory() }) {
                         Text(if (runCount > 0) "${s.history} ($runCount)" else s.history, color = c.textSub)
                     }
+                    if (plan.segments.size > 1) {
+                        TextButton(onClick = { showDrill = true }) { Text(s3.drillTitle, color = c.textSub) }
+                    }
                     TextButton(onClick = { startExport(app, plan, ui) { showExport = true } }) { Text(s.export, color = c.textSub) }
                     // In the wide layout the list is already next to this
                     if (!wide) TextButton(onClick = { app.backToLibrary() }) { Text(s.library, color = c.textSub) }
@@ -106,4 +124,31 @@ fun ReadyScreen(app: AppController) {
     }
 
     if (showExport) ExportDialog(app, plan, onDismiss = { showExport = false })
+    if (showDrill) {
+        AlertDialog(
+            onDismissRequest = { showDrill = false },
+            title = { ClosableTitle(s3.drillTitle) { showDrill = false } },
+            text = {
+                Column(Modifier.heightIn(max = 440.dp).verticalScroll(rememberScrollState())) {
+                    Text(s3.drillPick, fontSize = 14.sp, color = c.textSub)
+                    Spacer(Modifier.height(10.dp))
+                    plan.segments.forEachIndexed { i, seg ->
+                        Surface(
+                            onClick = { showDrill = false; app.startDrill(i) },
+                            color = c.surfaceHigh,
+                            shape = MaterialTheme.shapes.medium,
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
+                        ) {
+                            Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Text(seg.title, fontWeight = FontWeight.Bold, maxLines = 2, modifier = Modifier.weight(1f))
+                                Text(formatTime(seg.targetSeconds), color = c.textSub, style = Tabular)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = { TextButton(onClick = { showDrill = false }) { Text(s.cancel, color = c.textMain) } },
+        )
+    }
 }
