@@ -29,10 +29,18 @@ fun SettingsScreen(app: AppController) {
     val canVibrate = app.canVibrate
     AppBackHandler { app.backToLibrary() }
 
-    Column(
+    // The scrolling area is the whole screen (also the empty sides on a tablet or PC),
+    // the settings themselves stay at a readable width in the middle
+    Box(
         Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(rememberScrollState()),
+        contentAlignment = Alignment.TopCenter,
+    ) {
+    Column(
+        Modifier
+            .widthIn(max = 720.dp)
+            .fillMaxWidth()
             .padding(24.dp),
     ) {
         Text(s.settingsTitle, fontSize = 32.sp, fontWeight = FontWeight.Bold)
@@ -142,6 +150,7 @@ fun SettingsScreen(app: AppController) {
             AboutContent(app)
         }
         Spacer(Modifier.height(24.dp))
+    }
     }
 }
 

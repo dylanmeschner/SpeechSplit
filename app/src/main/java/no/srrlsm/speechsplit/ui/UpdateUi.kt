@@ -81,7 +81,7 @@ fun UpdateDialog(app: AppController, release: ReleaseInfo, onDismiss: () -> Unit
     AlertDialog(
         onDismissRequest = onDismiss,
         icon = { Icon(Icons.Default.SystemUpdate, contentDescription = null) },
-        title = { Text(s.updateAvailable(release.version)) },
+        title = { ClosableTitle(s.updateAvailable(release.version), onDismiss) },
         text = {
             Column {
                 Text(s.versionLabel(app.appVersion) + "  →  " + release.version, color = AppTheme.colors.textSub, fontSize = 14.sp)
@@ -168,7 +168,9 @@ fun AboutContent(app: AppController) {
     }
 
     HorizontalDivider(Modifier.padding(top = 14.dp, bottom = 4.dp))
+    LinkRow(Icons.Default.AutoAwesome, s.whatsNew) { app.openWhatsNew() }
     LinkRow(Icons.Default.NewReleases, s.patchNotes) { showNotes = true }
+    LinkRow(Icons.Default.School, LocalStrings3.current.tutorialShow) { app.openTutorial() }
     LinkRow(Icons.Default.Feedback, s.feedback) { showFeedback = true }
     LinkRow(Icons.Default.Language, s.website, external = true) { ui.openUrl(WEBSITE_URL) }
     LinkRow(Icons.Default.Code, s.viewOnGitHub, external = true) { ui.openUrl(RELEASES_URL) }
@@ -213,7 +215,7 @@ fun PatchNotesDialog(app: AppController, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         icon = { Icon(Icons.Default.NewReleases, contentDescription = null) },
-        title = { Text(s.patchNotes) },
+        title = { ClosableTitle(s.patchNotes, onDismiss) },
         text = {
             Column(Modifier.heightIn(max = 460.dp).verticalScroll(rememberScrollState())) {
                 when (state) {
@@ -264,7 +266,7 @@ fun FeedbackDialog(app: AppController, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         icon = { Icon(Icons.Default.Feedback, contentDescription = null) },
-        title = { Text(s.feedback) },
+        title = { ClosableTitle(s.feedback, onDismiss) },
         text = {
             Column {
                 Text(s.feedbackText, fontSize = 14.sp, color = c.textSub)

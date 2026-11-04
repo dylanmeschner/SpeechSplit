@@ -4,6 +4,11 @@ import no.srrlsm.speechsplit.core.AppLanguage
 import no.srrlsm.speechsplit.core.AppSettings
 import no.srrlsm.speechsplit.core.CelebrateOptions
 import no.srrlsm.speechsplit.core.ClockMode
+import no.srrlsm.speechsplit.core.Folder
+import no.srrlsm.speechsplit.core.MeetingKind
+import no.srrlsm.speechsplit.core.MeetingPart
+import no.srrlsm.speechsplit.core.MeetingProgram
+import no.srrlsm.speechsplit.core.MeetingWeek
 import no.srrlsm.speechsplit.core.PracticeRun
 import no.srrlsm.speechsplit.core.RunSegment
 import no.srrlsm.speechsplit.core.SpeechPlan
@@ -37,6 +42,7 @@ object JsonCodec {
             if (plan.createdAtEpochMs > 0) put("createdAt", plan.createdAtEpochMs)
             if (plan.lastUsedAtEpochMs > 0) put("lastUsedAt", plan.lastUsedAtEpochMs)
             if (plan.archived) put("archived", true)
+            plan.folderId?.let { put("folderId", it) }
         }
         put("title", plan.title)
         put("segments", JSONArray().apply {
@@ -66,6 +72,7 @@ object JsonCodec {
             createdAtEpochMs = obj.optLong("createdAt", 0L).coerceAtLeast(0L),
             lastUsedAtEpochMs = obj.optLong("lastUsedAt", 0L).coerceAtLeast(0L),
             archived = obj.optBoolean("archived", false),
+            folderId = obj.optString("folderId").ifBlank { null },
         )
     }
 
@@ -82,12 +89,13 @@ object JsonCodec {
         return o.toString(2) + "\n"
     }
 
-    /** A .speechsplit library backup: every speech (archived ones too) and all practice history. */
-    fun libraryFileText(plans: List<SpeechPlan>, runs: List<PracticeRun>): String =
+    /** A .speechsplit library backup: every speech (archived ones too), the folders and all practice history. */
+    fun libraryFileText(plans: List<SpeechPlan>, runs: List<PracticeRun>, folders: List<Folder> = emptyList()): String =
         JSONObject()
             .put("app", "Speech Split")
             .put("format", 1)
             .put("kind", "library")
+            .put("folders", foldersToJsonArray(folders))
             .put("speeches", JSONArray().apply { plans.forEach { put(planToJson(it, includeIds = true)) } })
             .put("history", JSONArray().apply { runs.forEach { put(runToJson(it)) } })
             .toString(2) + "\n"
@@ -103,7 +111,8 @@ object JsonCodec {
             val plans = (0 until arr.length()).mapNotNull { i ->
                 runCatching { planFromJson(arr.getJSONObject(i), fallbackTitle) }.getOrNull()
             }.distinctBy { it.id }
-            return SpeechFile(plans, runs, isLibrary = true)
+            val folders = o.optJSONArray("folders")?.let { foldersFromJsonArray(it) } ?: emptyList()
+            return SpeechFile(plans, runs, isLibrary = true, folders = folders)
         }
         val plan = runCatching { planFromJson(o, fallbackTitle) }.getOrNull() ?: return null
         return SpeechFile(listOf(plan), runs, isLibrary = false)
@@ -114,6 +123,10 @@ object JsonCodec {
         put("planId", run.planId)
         put("planTitle", run.planTitle)
         put("finishedAt", run.finishedAtEpochMs)
+        // Same names as the web version uses
+        if (run.live) put("live", true)
+        run.meeting?.let { put("meeting", if (it == MeetingKind.WEEKEND) "weekend" else "midweek") }
+        if (run.bufferSeconds > 0) put("buffer", run.bufferSeconds)
         put("segments", JSONArray().apply {
             run.segments.forEach { s ->
                 put(
@@ -134,6 +147,13 @@ object JsonCodec {
             planId = obj.getString("planId"),
             planTitle = obj.optString("planTitle"),
             finishedAtEpochMs = obj.getLong("finishedAt"),
+            live = obj.optBoolean("live", false),
+            meeting = when (obj.optString("meeting")) {
+                "midweek" -> MeetingKind.MIDWEEK
+                "weekend" -> MeetingKind.WEEKEND
+                else -> null
+            },
+            bufferSeconds = obj.optInt("buffer", 0).coerceAtLeast(0),
             segments = (0 until segs.length()).map { j ->
                 val s = segs.getJSONObject(j)
                 RunSegment(
@@ -186,7 +206,11 @@ object JsonCodec {
         .put("lecternMode", s.lecternMode)
         .put("autoUpdateCheck", s.autoUpdateCheck)
         .put("speechSort", s.speechSort.name)
-        .put("wordsPerMinute", s.wordsPerMinute)
+        .put("tutorialSeen", s.tutorialSeen)
+        .put("lastSeenVersion", s.lastSeenVersion)
+        .put("runLive", s.runLive)
+        .put("meetingKind", s.meetingKind.name)
+        .put("meetingLanguage", s.meetingLanguage)
         .toString(2)
 
     fun settingsFromJson(text: String): AppSettings {
@@ -207,7 +231,54 @@ object JsonCodec {
             lecternMode = o.optBoolean("lecternMode", d.lecternMode),
             autoUpdateCheck = o.optBoolean("autoUpdateCheck", d.autoUpdateCheck),
             speechSort = enumOrDefault(o.optString("speechSort"), d.speechSort),
-            wordsPerMinute = o.optInt("wordsPerMinute", d.wordsPerMinute).coerceIn(60, 250),
+            tutorialSeen = o.optBoolean("tutorialSeen", d.tutorialSeen),
+            lastSeenVersion = o.optString("lastSeenVersion", d.lastSeenVersion),
+            runLive = o.optBoolean("runLive", d.runLive),
+            meetingKind = enumOrDefault(o.optString("meetingKind"), d.meetingKind),
+            meetingLanguage = o.optString("meetingLanguage", d.meetingLanguage),
         )
     }
+
+    // --- Folders ------------------------------------------------------------------
+    fun foldersToJsonArray(folders: List<Folder>): JSONArray = JSONArray().apply {
+        folders.forEach { f ->
+            put(JSONObject().put("id", f.id).put("name", f.name).apply { if (f.createdAtEpochMs > 0) put("createdAt", f.createdAtEpochMs) })
+        }
+    }
+
+    fun foldersFromJsonArray(array: JSONArray): List<Folder> = (0 until array.length()).mapNotNull { i ->
+        val o = array.optJSONObject(i) ?: return@mapNotNull null
+        val id = o.optString("id")
+        val name = o.optString("name").trim()
+        if (id.isBlank() || name.isBlank()) null else Folder(id, name, o.optLong("createdAt", 0L))
+    }.distinctBy { it.id }
+
+    fun foldersToJson(folders: List<Folder>): String = foldersToJsonArray(folders).toString()
+
+    fun foldersFromJson(text: String): List<Folder> = runCatching { foldersFromJsonArray(JSONArray(text)) }.getOrDefault(emptyList())
+
+    // --- Meeting programs (docs/meetings/<lang>.json) ---------------------------------
+    fun meetingProgramFromJson(text: String): MeetingProgram? = runCatching {
+        val o = JSONObject(text.trim())
+        val weeks = o.getJSONArray("weeks")
+        MeetingProgram(
+            language = o.optString("lang"),
+            updated = o.optString("updated"),
+            weeks = (0 until weeks.length()).mapNotNull { i ->
+                val w = weeks.optJSONObject(i) ?: return@mapNotNull null
+                val parts = w.optJSONArray("parts") ?: return@mapNotNull null
+                val songs = w.optJSONArray("songs")
+                MeetingWeek(
+                    start = w.optString("start"),
+                    reading = w.optString("reading"),
+                    songs = if (songs == null) emptyList() else (0 until songs.length()).map { songs.optInt(it) }.filter { it > 0 },
+                    parts = (0 until parts.length()).mapNotNull { j ->
+                        val p = parts.optJSONObject(j) ?: return@mapNotNull null
+                        MeetingPart(p.optInt("n"), p.optString("title"), p.optInt("min"))
+                    },
+                    livingFrom = w.optInt("livingFrom", 7),
+                )
+            }.filter { it.start.length == 10 },
+        )
+    }.getOrNull()
 }

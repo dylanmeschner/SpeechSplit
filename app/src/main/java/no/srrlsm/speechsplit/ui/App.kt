@@ -52,6 +52,7 @@ fun SpeechSplitApp(app: AppController) {
     Surface(modifier = Modifier.fillMaxSize(), color = AppTheme.colors.bg) {
         CompositionLocalProvider(
             LocalStrings provides app.strings,
+            LocalStrings3 provides app.strings3,
             LocalSettings provides app.settings,
         ) {
             // Keeps content clear of the status bar, nav bar, camera cutout and keyboard
@@ -64,7 +65,7 @@ fun SpeechSplitApp(app: AppController) {
                         WideLayout(app)
                     } else {
                         when (app.currentScreen) {
-                            AppScreen.LIBRARY, AppScreen.ARCHIVE, AppScreen.SETTINGS -> HomeTabs(app)
+                            AppScreen.LIBRARY, AppScreen.ARCHIVE, AppScreen.SETTINGS, AppScreen.MEETING -> HomeTabs(app)
                             AppScreen.EDIT -> EditScreen(app)
                             AppScreen.READY -> ReadyScreen(app)
                             AppScreen.TIMER -> TimerScreen(app)
@@ -73,11 +74,11 @@ fun SpeechSplitApp(app: AppController) {
                     }
                 }
             }
-            // A document that was opened, dropped or shared: show the suggested segments.
-            // Not over a running timer or unsaved edits; it waits until the user leaves those.
-            val draft = app.importDraft
-            if (draft != null && app.currentScreen != AppScreen.TIMER && app.currentScreen != AppScreen.EDIT) {
-                ImportSuggestDialog(app, draft)
+            // First start: the introduction. First start after an update: what's new.
+            // Never over a running timer (they wait until it's closed).
+            if (app.currentScreen != AppScreen.TIMER) {
+                if (app.showTutorial) TutorialDialog(onDone = { app.tutorialDone() })
+                else if (app.showWhatsNew) WhatsNewDialog(app, onDone = { app.whatsNewDone() })
             }
             // A library backup was opened: add or replace
             ImportLibraryDialog(app)
@@ -115,7 +116,7 @@ private fun WideLayout(app: AppController) {
             Spacer(Modifier.height(12.dp))
             NavigationRailItem(
                 selected = app.currentScreen != AppScreen.SETTINGS,
-                onClick = { app.guardEdits { app.backToLibrary() } },
+                onClick = { app.guardEdits { app.libraryTab() } },
                 icon = { Icon(Icons.Default.Timer, contentDescription = null) },
                 label = { Text(s.tabSpeeches) },
                 colors = itemColors,
@@ -129,8 +130,10 @@ private fun WideLayout(app: AppController) {
             )
         }
         when (app.currentScreen) {
-            AppScreen.SETTINGS -> CenteredPane(720.dp) { SettingsScreen(app) }
+            // Full width, so it scrolls wherever you swipe; the screen keeps its own content narrow
+            AppScreen.SETTINGS -> SettingsScreen(app)
             AppScreen.ARCHIVE -> CenteredPane(720.dp) { ArchiveScreen(app) }
+            AppScreen.MEETING -> CenteredPane(720.dp) { MeetingScreen(app) }
             else -> {
                 Box(Modifier.width(380.dp).fillMaxHeight()) { LibraryScreen(app) }
                 VerticalDivider(color = c.surfaceHigh)

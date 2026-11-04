@@ -50,7 +50,7 @@ import javax.swing.SwingUtilities
 import java.io.File
 import java.net.URI
 import no.srrlsm.speechsplit.core.ReleaseInfo
-import no.srrlsm.speechsplit.jvm.DocumentReader
+import no.srrlsm.speechsplit.core.MAX_IMPORT_BYTES
 import no.srrlsm.speechsplit.ui.urlEncode
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.draganddrop.DragAndDropEvent
@@ -61,7 +61,7 @@ import java.awt.FileDialog
 import java.awt.Frame
 import java.awt.datatransfer.DataFlavor
 
-private val DOC_EXTENSIONS = setOf("speechsplit", "json", "pdf", "docx", "odt", "txt", "md", "rtf", "text", "markdown")
+private val DOC_EXTENSIONS = setOf("speechsplit", "json")
 
 // ============================================================================
 // SPEECH SPLIT FOR WINDOWS (and Mac/Linux)
@@ -131,7 +131,7 @@ private fun runApp() = application {
 
         SpeechSplitTheme(darkTheme = dark) {
             CompositionLocalProvider(LocalUiActions provides ui) {
-                // Drop a PDF, Word or text file anywhere on the window to import it
+                // Drop a .speechsplit file anywhere on the window to import it
                 val dropTarget = remember {
                     object : DragAndDropTarget {
                         override fun onDrop(event: DragAndDropEvent): Boolean {
@@ -144,7 +144,7 @@ private fun runApp() = application {
                                     }
                                     t.isDataFlavorSupported(DataFlavor.stringFlavor) -> {
                                         val text = t.getTransferData(DataFlavor.stringFlavor) as String
-                                        if (!app.importText(text)) ui.toast(app.strings.importNothing)
+                                        if (!app.importText(text)) ui.toast(app.strings3.importPasteOnly)
                                         true
                                     }
                                     else -> false
@@ -201,7 +201,7 @@ private class KeyHandler(private val app: AppController) {
  */
 private fun importFile(app: AppController, file: File) {
     Thread({
-        val bytes = if (!file.isFile || file.length() > DocumentReader.MAX_BYTES) ByteArray(0)
+        val bytes = if (!file.isFile || file.length() > MAX_IMPORT_BYTES) ByteArray(0)
         else runCatching { file.readBytes() }.getOrNull()
         if (bytes != null) SwingUtilities.invokeLater { app.importDocument(file.name, bytes) }
     }, "SpeechSplit-import").apply { isDaemon = true }.start()
@@ -220,11 +220,11 @@ private class DesktopUi(
 ) : UiActions {
     override val canPickDocuments: Boolean = true
 
-    /** The system's own "Open" window, filtered to saved speeches and speech documents. */
+    /** The system's own "Open" window, filtered to saved speeches (.speechsplit). */
     override fun pickDocument() {
         val dialog = FileDialog(null as Frame?, pickTitle(), FileDialog.LOAD).apply {
             // Windows ignores filenameFilter, but uses this pattern
-            file = "*.speechsplit;*.pdf;*.docx;*.odt;*.txt;*.md;*.rtf;*.json"
+            file = "*.speechsplit;*.json"
             setFilenameFilter { _, name -> name.substringAfterLast('.').lowercase() in DOC_EXTENSIONS }
         }
         dialog.isVisible = true // blocks until closed

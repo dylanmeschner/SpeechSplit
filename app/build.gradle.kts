@@ -17,7 +17,7 @@ android {
         applicationId = "no.srrlsm.speechtimer"
         minSdk = 24
         targetSdk = 37
-        versionCode = 5
+        versionCode = 6
         versionName = appVersion
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -59,8 +59,6 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.0")
     implementation("androidx.compose.material:material-icons-extended:1.7.8")
-    // Reads the text of PDF speeches for "import a document"
-    implementation("com.tom-roush:pdfbox-android:2.0.27.0")
 }
 // Name the APK after the app and version instead of "app-release.apk"
 base {

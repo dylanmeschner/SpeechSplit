@@ -12,7 +12,9 @@ Notes for working on Speech Split. The project's front page is [README.md](READM
 | `app/src/main/java/no/srrlsm/speechsplit/platform` | Android only: storage, vibration, watch, Do Not Disturb. |
 | `desktop/` | Windows (and Mac) app: window, keyboard shortcuts, storage. |
 | `docs/` | The download page (GitHub Pages), with `privacy.html` (privacy and terms). |
-| `docs/app/` | The web version (for iPad and other browsers). Plain HTML/JS, works offline. Texts are in `strings.js`, document import in `import.js`. |
+| `docs/app/` | The web version (for iPad and other browsers). Plain HTML/JS, works offline. Texts are in `strings.js` and `strings3.js`. |
+| `docs/meetings/` | The weekly meeting programs for meeting mode, one file per language (`no.json`, `en.json`, `de.json`). |
+| `tools/` | `workbook_to_json.py` (meeting workbook PDF to program file) and `strings3.py` (texts added in 3.0). |
 | `.github/workflows/` | Builds the Windows installer automatically on each release. |
 
 ## Version number
@@ -72,3 +74,24 @@ File type: `application/vnd.speechsplit+json`. Built in `JsonCodec` (apps) and `
 
 If the window stops responding for more than 2 seconds, `FreezeWatch.kt` writes what the app was doing to
 `%APPDATA%\Speech Split\freeze-log.txt`. The feedback email mentions the file when it exists.
+
+## Texts added in 3.0
+
+The texts that came with 3.0 (meeting mode, folders, summary, introduction...) live in one place for all
+three languages: `tools/strings3.py`. Change them there and run `python3 tools/strings3.py`; it writes
+`docs/app/strings3.js` (web) and `core/Strings3.kt` (apps). Older texts are still in `Strings.kt` and `strings.js`.
+
+## Meeting mode: new workbooks
+
+The midweek program comes from `docs/meetings/<lang>.json` on the website. The apps and the web version
+download it when meeting mode opens and keep the last copy, so it works offline. No new app version is needed.
+
+When a new workbook is out (every two months):
+
+1. Download the PDF from jw.org for each language (e.g. `mwb_N_202701.pdf`, `mwb_E_202701.pdf`, `mwb_X_202701.pdf`).
+2. `pip install pdfplumber`, then `python3 tools/workbook_to_json.py no mwb_N_202701.pdf` (and `en`, `de`).
+   It prints every week; check the titles and minutes. Weeks that ended more than 8 weeks ago are dropped.
+3. Commit and push `docs/meetings/`. GitHub Pages publishes it within a few minutes.
+
+The file name must contain the year and month (`202701`). Only part titles, minutes and song numbers are stored.
+The weekend meeting is built into the app (song, public talk 30, song, Watchtower Study 60, song).

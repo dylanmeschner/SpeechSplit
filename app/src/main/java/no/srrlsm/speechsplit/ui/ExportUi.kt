@@ -59,7 +59,7 @@ fun ExportDialog(app: AppController, plan: SpeechPlan?, onDismiss: () -> Unit) {
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(s.exportChooser) },
+        title = { ClosableTitle(s.exportChooser, onDismiss) },
         text = {
             Column(Modifier.selectableGroup()) {
                 if (plan != null) {
@@ -143,7 +143,7 @@ fun ImportLibraryDialog(app: AppController) {
     }
     AlertDialog(
         onDismissRequest = { app.dismissLibrary() },
-        title = { Text(s.importLibraryTitle) },
+        title = { ClosableTitle(s.importLibraryTitle) { app.dismissLibrary() } },
         text = { Text(s.importLibraryText(file.plans.size, file.runs.size), style = MaterialTheme.typography.bodyMedium) },
         confirmButton = { Button(onClick = { app.applyLibrary(replace = false) }) { Text(s.importAdd) } },
         dismissButton = {

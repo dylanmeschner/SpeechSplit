@@ -31,6 +31,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import no.srrlsm.speechsplit.core.AppController
 import no.srrlsm.speechsplit.core.ClockMode
+import no.srrlsm.speechsplit.core.RunSummary
+import no.srrlsm.speechsplit.core.Verdict
+import no.srrlsm.speechsplit.core.verdict
+import no.srrlsm.speechsplit.core.verdictLabel
 import no.srrlsm.speechsplit.core.SpeechSegment
 import no.srrlsm.speechsplit.core.TimeStatus
 import no.srrlsm.speechsplit.core.buildRunReport
@@ -153,13 +157,32 @@ fun TimerScreen(app: AppController) {
                         verticalAlignment = Alignment.Bottom,
                     ) {
                         Column {
-                            SectionLabel(s.totalPlan(formatTime(plan.totalTargetSeconds)), size = 10.sp)
+                            SectionLabel(s.totalPlan(formatTime(plan.totalPlannedSeconds)), size = 10.sp)
                             Text(formatTime(totalElapsed), fontSize = (40 * scale).sp, fontWeight = FontWeight.Bold, style = Tabular)
                         }
                         Column(horizontalAlignment = Alignment.End, modifier = Modifier.padding(bottom = 6.dp)) {
                             SectionLabel(s.aheadBehind, Modifier.padding(bottom = 4.dp), size = 10.sp)
                             DiffPill(diffSeconds = scheduleDiff, fontSize = (20 * scale).sp)
                         }
+                    }
+
+                    // Meeting: the spare minutes, which shrink as soon as the program runs late
+                    val buffer = plan.meeting?.bufferSeconds ?: 0
+                    if (buffer > 0 && !finished) {
+                        val left = buffer - scheduleDiff.coerceAtLeast(0)
+                        val s3 = LocalStrings3.current
+                        Text(
+                            if (left >= 0) s3.bufferLeft(formatTime(left)) else s3.bufferUsed(formatTime(-left)),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.5.sp,
+                            color = when {
+                                left < 0 -> AppTheme.colors.over
+                                left < buffer -> AppTheme.colors.warning
+                                else -> AppTheme.colors.adjusted
+                            },
+                            modifier = Modifier.padding(start = pad, end = pad, bottom = 10.dp),
+                        )
                     }
 
                     HorizontalDivider()
@@ -189,6 +212,7 @@ fun TimerScreen(app: AppController) {
                             elapsed = elapsed,
                             segmentDiff = segmentDiff,
                             pad = pad,
+                            finished = finished,
                             modifier = Modifier.weight(1f),
                         )
                     }
@@ -469,15 +493,41 @@ private fun AdjustedCard(adjusted: Int, pastBanked: Int, targetSeconds: Int, sca
     }
 }
 
+/** After the last part: the result, a summary (or the attempts, when practising one part), share. */
 @Composable
 private fun FinishedPanel(app: AppController, finalDiff: Int, perfect: Boolean, pad: Dp) {
     val s = LocalStrings.current
+    val s3 = LocalStrings3.current
     val ui = LocalUiActions.current
     val c = AppTheme.colors
+    val plan = app.activePlan
+    val drill = app.drill
     Column(
-        modifier = Modifier.fillMaxWidth().background(c.surface).padding(horizontal = pad, vertical = 24.dp),
+        modifier = Modifier.fillMaxWidth().heightIn(max = 460.dp).background(c.surface).verticalScroll(rememberScrollState())
+            .padding(horizontal = pad, vertical = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
+        if (plan != null && plan.isDrill && drill != null) {
+            // Practising one part: every attempt, newest first, and "again"
+            val target = plan.segments.firstOrNull()?.targetSeconds ?: 0
+            Icon(Icons.Default.GpsFixed, contentDescription = null, tint = c.adjusted, modifier = Modifier.size(32.dp))
+            Text(plan.segments.firstOrNull()?.title ?: "", fontSize = 24.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 8.dp))
+            SectionLabel(s3.drillAttempts, Modifier.padding(top = 12.dp, bottom = 4.dp))
+            drill.attempts.withIndex().reversed().forEach { (i, secs) ->
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 3.dp)) {
+                    Text(s3.drillAttempt((i + 1).toString()), color = c.textSub, modifier = Modifier.widthIn(min = 96.dp))
+                    Text(formatTime(secs), style = Tabular, modifier = Modifier.padding(horizontal = 12.dp))
+                    DiffPill(secs - target, 14.sp)
+                }
+            }
+            OutlinedButton(onClick = { app.drillAgain() }, modifier = Modifier.padding(top = 12.dp)) {
+                Icon(Icons.Default.Replay, contentDescription = null, tint = c.textMain, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(s3.drillAgain, color = c.textMain)
+            }
+        } else {
+        val run = remember(app.engine.isFinished, app.runs) { app.finishedRun() }
+        val summary = run?.let { app.summaryOf(it) }
         Icon(
             if (perfect) Icons.Default.EmojiEvents else Icons.Default.Flag,
             contentDescription = null,
@@ -491,20 +541,25 @@ private fun FinishedPanel(app: AppController, finalDiff: Int, perfect: Boolean, 
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(top = 8.dp),
         )
+        val diff = run?.diffSeconds ?: finalDiff
         Text(
-            when {
-                finalDiff > 0 -> s.overPlan(formatTime(finalDiff))
-                finalDiff < 0 -> s.underPlan(formatTime(-finalDiff))
+            summary?.meetingLine ?: when {
+                diff > 0 -> s.overPlan(formatTime(diff))
+                diff < 0 -> s.underPlan(formatTime(-diff))
                 else -> s.onTime
             },
             color = c.textSub,
             fontSize = 18.sp,
             textAlign = TextAlign.Center,
         )
+        if (summary != null) {
+            Spacer(Modifier.height(12.dp))
+            SummaryBlocks(summary, Modifier.widthIn(max = 460.dp))
+        }
         TextButton(
             onClick = {
-                app.currentRunSnapshot()?.let { run ->
-                    ui.share(buildRunReport(run, s, app.formatDate(run.finishedAtEpochMs)), s.shareReport)
+                app.currentRunSnapshot()?.let { r ->
+                    ui.share(buildRunReport(r, s, app.formatDate(r.finishedAtEpochMs)), s.shareReport)
                 }
             },
             modifier = Modifier.padding(top = 8.dp),
@@ -512,6 +567,42 @@ private fun FinishedPanel(app: AppController, finalDiff: Int, perfect: Boolean, 
             Icon(Icons.Default.Share, contentDescription = null, tint = c.textMain, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
             Text(s.shareReport, color = c.textMain)
+        }
+        }
+    }
+}
+
+/** "Went well" (green) and "worth noting" (amber), and how it compares with last time. Also used in the history. */
+@Composable
+fun SummaryBlocks(summary: RunSummary, modifier: Modifier = Modifier) {
+    val s3 = LocalStrings3.current
+    val c = AppTheme.colors
+    Column(modifier.fillMaxWidth()) {
+        if (summary.praise.isNotEmpty()) {
+            SummaryBox(s3.praiseTitle, summary.praise, Icons.Default.Check, c.green)
+        }
+        if (summary.notes.isNotEmpty()) {
+            Spacer(Modifier.height(8.dp))
+            SummaryBox(s3.notesTitle, summary.notes, Icons.Default.Info, c.warning)
+        }
+        summary.compare?.let {
+            Text(it, fontSize = 13.sp, color = c.textSub, style = Tabular, modifier = Modifier.padding(top = 8.dp))
+        }
+    }
+}
+
+@Composable
+private fun SummaryBox(title: String, lines: List<String>, icon: androidx.compose.ui.graphics.vector.ImageVector, accent: Color) {
+    Surface(color = accent.copy(alpha = 0.13f), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
+            SectionLabel(title, size = 10.sp)
+            lines.forEach { line ->
+                Row(Modifier.padding(top = 6.dp)) {
+                    Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(18.dp).padding(top = 1.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(line, fontSize = 14.sp)
+                }
+            }
         }
     }
 }
@@ -539,9 +630,11 @@ private fun SegmentList(
     elapsed: List<Int>,
     segmentDiff: Int,
     pad: Dp,
+    finished: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val s = LocalStrings.current
+    val s3 = LocalStrings3.current
     val warningPercent = LocalSettings.current.warningPercent
     val listState = rememberLazyListState()
     LaunchedEffect(index) {
@@ -588,6 +681,23 @@ private fun SegmentList(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),
                 )
+                if (finished) {
+                    // A word per part (on time, a bit over...) next to the numbers
+                    val v = verdict(elapsed[i] - segment.targetSeconds, segment.targetSeconds)
+                    Text(
+                        s3.verdictLabel(v),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        color = when (v) {
+                            Verdict.ON_TIME -> AppTheme.colors.green
+                            Verdict.BIT_OVER, Verdict.BIT_UNDER -> AppTheme.colors.warning
+                            Verdict.OVER -> AppTheme.colors.over
+                            Verdict.UNDER -> AppTheme.colors.adjusted
+                        },
+                        modifier = Modifier.padding(start = 8.dp),
+                    )
+                }
                 if (isPast) {
                     DiffPill(elapsed[i] - segment.targetSeconds, 13.sp, Modifier.padding(horizontal = 8.dp))
                 } else if (isCurrent) {

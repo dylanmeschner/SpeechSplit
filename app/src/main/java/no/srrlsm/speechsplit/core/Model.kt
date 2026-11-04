@@ -35,12 +35,42 @@ data class SpeechPlan(
     val lastUsedAtEpochMs: Long = 0L,
     /** Archived speeches are hidden from the list, but kept with their history and can be restored. */
     val archived: Boolean = false,
+    /** The folder it's in, or null for the library itself. */
+    val folderId: String? = null,
+    /** Set for a meeting (meeting mode). A meeting isn't saved as a speech: it's made from the week's program. */
+    val meeting: MeetingInfo? = null,
+    /** "Practise one part": a one-segment copy of a speech's part, run again and again. Not saved. */
+    val isDrill: Boolean = false,
 ) {
     val totalTargetSeconds: Int get() = segments.sumOf { it.targetSeconds }
+
+    /** What the run is measured against at the end: the parts, plus a meeting's spare minutes. */
+    val totalPlannedSeconds: Int get() = totalTargetSeconds + (meeting?.bufferSeconds ?: 0)
 
     /** For "last used" sorting: a new speech counts as used when it was created. */
     val recentActivityEpochMs: Long get() = maxOf(lastUsedAtEpochMs, createdAtEpochMs)
 }
+
+/** A folder in the library. Speeches point to it with [SpeechPlan.folderId]. */
+data class Folder(
+    val id: String = newId(),
+    val name: String,
+    val createdAtEpochMs: Long = 0L,
+)
+
+enum class MeetingKind { MIDWEEK, WEEKEND }
+
+/**
+ * @param bufferSeconds time to spare at the end (the midweek meeting has 5 minutes). Parts that run
+ *   late use it up first; the meeting is only late once it's gone.
+ * @param week Monday of the meeting's week, "2026-11-02" (midweek only).
+ */
+data class MeetingInfo(
+    val kind: MeetingKind,
+    val bufferSeconds: Int = 0,
+    val week: String = "",
+    val reading: String = "",
+)
 
 /** How the speech list is sorted. */
 enum class SpeechSort { LAST_USED, CREATED, NAME }
@@ -62,10 +92,17 @@ data class PracticeRun(
     val planTitle: String,
     val finishedAtEpochMs: Long,
     val segments: List<RunSegment>,
+    /** A real speech (chosen on the Ready screen), not practice. Meetings are always real. */
+    val live: Boolean = false,
+    /** Set for a meeting's run. */
+    val meeting: MeetingKind? = null,
+    /** A meeting's spare minutes: counted as planned time at the end. */
+    val bufferSeconds: Int = 0,
 ) {
     val totalTargetSeconds: Int get() = segments.sumOf { it.targetSeconds }
     val totalActualSeconds: Int get() = segments.sumOf { it.actualSeconds }
-    val diffSeconds: Int get() = totalActualSeconds - totalTargetSeconds
+    /** Over (+) or under (-) the plan. A meeting is only over once its spare minutes are used up. */
+    val diffSeconds: Int get() = totalActualSeconds - totalTargetSeconds - bufferSeconds
 }
 
 // ============================================================================
@@ -98,14 +135,24 @@ data class AppSettings(
     val autoUpdateCheck: Boolean = true,
     /** Order of the speech list. */
     val speechSort: SpeechSort = SpeechSort.LAST_USED,
-    /** Speaking pace used when suggesting times for an imported document. */
-    val wordsPerMinute: Int = 130,
+    /** The introduction cards were shown (or skipped). */
+    val tutorialSeen: Boolean = false,
+    /** The version the app last started as, to show "what's new" once after an update. */
+    val lastSeenVersion: String = "",
+    /** Ready screen choice: a real speech (true) or practice. */
+    val runLive: Boolean = false,
+    /** Meeting mode: the meeting picked last time. */
+    val meetingKind: MeetingKind = MeetingKind.MIDWEEK,
+    /** Meeting mode: language of the program ("no", "en", "de"), or "" for the app's language. */
+    val meetingLanguage: String = "",
 )
 
 val WarningOptions = listOf(0, 5, 10, 15, 20)
 val CelebrateOptions = listOf(-1, 0, 2, 5)
 val QuickTimerOptions = listOf(5, 10, 15, 20, 30, 45)
-val PaceOptions = listOf(110, 130, 150)
+
+/** Largest file that's read for importing (a whole library with years of history is far smaller). */
+const val MAX_IMPORT_BYTES = 20 * 1024 * 1024
 
 enum class TimeStatus { ON_TRACK, WARNING, OVER }
 

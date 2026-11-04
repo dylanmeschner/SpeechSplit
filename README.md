@@ -39,7 +39,10 @@ Most speech timers only count down the whole talk. Speech Split keeps an eye on 
 ## Features
 
 - **Ahead or behind:** time you save early carries over to later parts.
-- **Import your speech:** drop in a PDF, Word or text file, and segments and times are suggested from your headings and word count.
+- **Meeting mode:** for the chairman, the week's midweek or weekend meeting program, timed part by part.
+- **Summary after every run:** what went well and where the time ran over, compared with last time.
+- **Practice or real speech,** and practise one part again and again.
+- **Folders** for your speeches.
 - **Practice history:** averages per part, a chart of your latest runs, and suggestions where you keep running over.
 - **Big clock:** a full-screen, high-contrast clock you can read from a distance.
 - **Sort and archive:** sort by last used, newest or name, and archive old speeches without losing them.

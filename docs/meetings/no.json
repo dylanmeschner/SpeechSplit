@@ -1,0 +1,475 @@
+{
+ "format": 1,
+ "lang": "no",
+ "weeks": [
+  {
+   "start": "2026-11-02",
+   "reading": "Jeremia 49–50",
+   "songs": [
+    1,
+    44,
+    33
+   ],
+   "parts": [
+    {
+     "n": 1,
+     "title": "Hjelp andre til å få et godt forhold til Jehova",
+     "min": 10
+    },
+    {
+     "n": 2,
+     "title": "Åndelige perler",
+     "min": 10
+    },
+    {
+     "n": 3,
+     "title": "Bibellesning",
+     "min": 4
+    },
+    {
+     "n": 4,
+     "title": "Start en samtale",
+     "min": 3
+    },
+    {
+     "n": 5,
+     "title": "Følg opp interessen",
+     "min": 4
+    },
+    {
+     "n": 6,
+     "title": "Led bibelstudier",
+     "min": 5
+    },
+    {
+     "n": 7,
+     "title": "Glem aldri det Jehova husker",
+     "min": 15
+    },
+    {
+     "n": 8,
+     "title": "Menighetsbibelstudiet",
+     "min": 30
+    }
+   ],
+   "livingFrom": 7
+  },
+  {
+   "start": "2026-11-09",
+   "reading": "Jeremia 51–52",
+   "songs": [
+    98,
+    10,
+    150
+   ],
+   "parts": [
+    {
+     "n": 1,
+     "title": "Ikke vær som Sidkia",
+     "min": 10
+    },
+    {
+     "n": 2,
+     "title": "Åndelige perler",
+     "min": 10
+    },
+    {
+     "n": 3,
+     "title": "Bibellesning",
+     "min": 4
+    },
+    {
+     "n": 4,
+     "title": "Start en samtale",
+     "min": 3
+    },
+    {
+     "n": 5,
+     "title": "Start en samtale",
+     "min": 4
+    },
+    {
+     "n": 6,
+     "title": "Tale",
+     "min": 5
+    },
+    {
+     "n": 7,
+     "title": "Bidragene våre gir ære til Jehova",
+     "min": 15
+    },
+    {
+     "n": 8,
+     "title": "Menighetsbibelstudiet",
+     "min": 30
+    }
+   ],
+   "livingFrom": 7
+  },
+  {
+   "start": "2026-11-16",
+   "reading": "Klagesangene 1–2",
+   "songs": [
+    28,
+    90,
+    75
+   ],
+   "parts": [
+    {
+     "n": 1,
+     "title": "En normal reaksjon på en tragedie",
+     "min": 10
+    },
+    {
+     "n": 2,
+     "title": "Åndelige perler",
+     "min": 10
+    },
+    {
+     "n": 3,
+     "title": "Bibellesning",
+     "min": 4
+    },
+    {
+     "n": 4,
+     "title": "Start en samtale",
+     "min": 3
+    },
+    {
+     "n": 5,
+     "title": "Følg opp interessen",
+     "min": 4
+    },
+    {
+     "n": 6,
+     "title": "Hva vil du si?",
+     "min": 5
+    },
+    {
+     "n": 7,
+     "title": "Vi vil gjerne hjelpe de brødrene og søstrene som ikke er aktive for tiden",
+     "min": 15
+    },
+    {
+     "n": 8,
+     "title": "Menighetsbibelstudiet",
+     "min": 30
+    }
+   ],
+   "livingFrom": 7
+  },
+  {
+   "start": "2026-11-23",
+   "reading": "Klagesangene 3–5",
+   "songs": [
+    158,
+    109,
+    74
+   ],
+   "parts": [
+    {
+     "n": 1,
+     "title": "Ikke gi opp når du opplever prøvelser",
+     "min": 10
+    },
+    {
+     "n": 2,
+     "title": "Åndelige perler",
+     "min": 10
+    },
+    {
+     "n": 3,
+     "title": "Bibellesning",
+     "min": 4
+    },
+    {
+     "n": 4,
+     "title": "Start en samtale",
+     "min": 3
+    },
+    {
+     "n": 5,
+     "title": "Start en samtale",
+     "min": 4
+    },
+    {
+     "n": 6,
+     "title": "Tale",
+     "min": 5
+    },
+    {
+     "n": 7,
+     "title": "Hjelp omsorgspersoner til å ikke gi opp",
+     "min": 15
+    },
+    {
+     "n": 8,
+     "title": "Menighetsbibelstudiet",
+     "min": 30
+    }
+   ],
+   "livingFrom": 7
+  },
+  {
+   "start": "2026-11-30",
+   "reading": "Esekiel 1–2",
+   "songs": [
+    65,
+    63,
+    134
+   ],
+   "parts": [
+    {
+     "n": 1,
+     "title": "Hold samme fart som Jehovas himmelvogn",
+     "min": 10
+    },
+    {
+     "n": 2,
+     "title": "Åndelige perler",
+     "min": 10
+    },
+    {
+     "n": 3,
+     "title": "Bibellesning",
+     "min": 4
+    },
+    {
+     "n": 4,
+     "title": "Start en samtale",
+     "min": 3
+    },
+    {
+     "n": 5,
+     "title": "Led bibelstudier",
+     "min": 5
+    },
+    {
+     "n": 6,
+     "title": "Tale",
+     "min": 4
+    },
+    {
+     "n": 7,
+     "title": "Lokale behov",
+     "min": 15
+    },
+    {
+     "n": 8,
+     "title": "Menighetsbibelstudiet",
+     "min": 30
+    }
+   ],
+   "livingFrom": 7
+  },
+  {
+   "start": "2026-12-07",
+   "reading": "Esekiel 3–4",
+   "songs": [
+    71,
+    161,
+    7
+   ],
+   "parts": [
+    {
+     "n": 1,
+     "title": "Hvorfor er vi ikke redde for å forkynne?",
+     "min": 10
+    },
+    {
+     "n": 2,
+     "title": "Åndelige perler",
+     "min": 10
+    },
+    {
+     "n": 3,
+     "title": "Bibellesning",
+     "min": 4
+    },
+    {
+     "n": 4,
+     "title": "Start en samtale",
+     "min": 3
+    },
+    {
+     "n": 5,
+     "title": "Start en samtale",
+     "min": 4
+    },
+    {
+     "n": 6,
+     "title": "Led bibelstudier",
+     "min": 5
+    },
+    {
+     "n": 7,
+     "title": "Lokale behov",
+     "min": 15
+    },
+    {
+     "n": 8,
+     "title": "Menighetsbibelstudiet",
+     "min": 30
+    }
+   ],
+   "livingFrom": 7
+  },
+  {
+   "start": "2026-12-14",
+   "reading": "Esekiel 5–6",
+   "songs": [
+    49,
+    153,
+    133
+   ],
+   "parts": [
+    {
+     "n": 1,
+     "title": "De som tilber avguder, knuser Jehovas hjerte",
+     "min": 10
+    },
+    {
+     "n": 2,
+     "title": "Åndelige perler",
+     "min": 10
+    },
+    {
+     "n": 3,
+     "title": "Bibellesning",
+     "min": 4
+    },
+    {
+     "n": 4,
+     "title": "Start en samtale",
+     "min": 3
+    },
+    {
+     "n": 5,
+     "title": "Følg opp interessen",
+     "min": 4
+    },
+    {
+     "n": 6,
+     "title": "Hva vil du si?",
+     "min": 5
+    },
+    {
+     "n": 7,
+     "title": "Hvorfor er vi ikke med på nasjonalistiske seremonier?",
+     "min": 15
+    },
+    {
+     "n": 8,
+     "title": "Menighetsbibelstudiet",
+     "min": 30
+    }
+   ],
+   "livingFrom": 7
+  },
+  {
+   "start": "2026-12-21",
+   "reading": "Esekiel 7–8",
+   "songs": [
+    128,
+    139,
+    154
+   ],
+   "parts": [
+    {
+     "n": 1,
+     "title": "Jehovas dag vil komme på det tidspunktet han har bestemt",
+     "min": 10
+    },
+    {
+     "n": 2,
+     "title": "Åndelige perler",
+     "min": 10
+    },
+    {
+     "n": 3,
+     "title": "Bibellesning",
+     "min": 4
+    },
+    {
+     "n": 4,
+     "title": "Start en samtale",
+     "min": 3
+    },
+    {
+     "n": 5,
+     "title": "Følg opp interessen",
+     "min": 4
+    },
+    {
+     "n": 6,
+     "title": "Led bibelstudier",
+     "min": 5
+    },
+    {
+     "n": 7,
+     "title": "Tenk på konsekvensene før du gjør noe",
+     "min": 15
+    },
+    {
+     "n": 8,
+     "title": "Menighetsbibelstudiet",
+     "min": 30
+    }
+   ],
+   "livingFrom": 7
+  },
+  {
+   "start": "2026-12-28",
+   "reading": "Esekiel 9–10",
+   "songs": [
+    119,
+    60,
+    135
+   ],
+   "parts": [
+    {
+     "n": 1,
+     "title": "Hjelp andre til å overleve Harmageddon",
+     "min": 10
+    },
+    {
+     "n": 2,
+     "title": "Åndelige perler",
+     "min": 10
+    },
+    {
+     "n": 3,
+     "title": "Bibellesning",
+     "min": 4
+    },
+    {
+     "n": 4,
+     "title": "Start en samtale",
+     "min": 3
+    },
+    {
+     "n": 5,
+     "title": "Følg opp interessen",
+     "min": 4
+    },
+    {
+     "n": 6,
+     "title": "Forklar hva du tror",
+     "min": 5
+    },
+    {
+     "n": 7,
+     "title": "‘Frels deg selv og dem som hører på deg’",
+     "min": 15
+    },
+    {
+     "n": 8,
+     "title": "Menighetsbibelstudiet",
+     "min": 30
+    }
+   ],
+   "livingFrom": 7
+  }
+ ],
+ "updated": "2026-11-04"
+}

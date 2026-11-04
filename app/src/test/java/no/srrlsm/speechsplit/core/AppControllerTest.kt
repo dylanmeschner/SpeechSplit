@@ -19,6 +19,9 @@ class AppControllerTest {
         override fun saveSettings(settings: AppSettings) { this.settings = settings }
         override fun exportPlan(plan: SpeechPlan) = ""
         override fun importPlan(text: String, fallbackTitle: String): SpeechPlan? = null
+        var folders = emptyList<Folder>()
+        override fun loadFolders() = folders
+        override fun saveFolders(folders: List<Folder>) { this.folders = folders }
     }
 
     private class FakePlatform : PlatformServices {
@@ -105,18 +108,144 @@ class AppControllerTest {
     }
 
     @Test
-    fun pastedSpeechTextBecomesADraft() {
+    fun plainTextIsNoLongerImported() {
+        // 3.0: documents and speech text aren't turned into speeches any more, only Speech Split files are
         val app = AppController(MemoryStore(), FakePlatform(), CoroutineScope(Job()))
-        val ok = app.importText("Intro\nHello everyone, thank you all for coming here today.\n\nMain\nThis is the main point of the talk and it matters.")
-        assertTrue(ok)
-        val draft = app.importDraft!!
-        val s = suggestSegments(draft, 130, null, null, "Intro") { "Part $it" }
-        assertEquals(listOf("Intro", "Main"), s.segments.map { it.title })
-        app.acceptImport(draft.title, s.segments, 130)
-        assertEquals(AppScreen.EDIT, app.currentScreen)
+        assertEquals(false, app.importText("Intro\nHello everyone, thank you all for coming here today."))
+        app.importDocument("talk.pdf", "%PDF-1.7 something".encodeToByteArray())
+        assertEquals(app.strings3.importOnlyFiles, app.message)
+        assertEquals(0, app.speechPlans.size)
+    }
+
+    @Test
+    fun foldersHoldSpeechesAndDeletingOneKeepsThem() {
+        val store = MemoryStore(listOf(plan("A"), plan("B")))
+        val app = AppController(store, FakePlatform(), CoroutineScope(Job()))
+        val f = app.createFolder("  Talks  ")!!
+        assertEquals("Talks", f.name)
+        assertEquals(null, app.createFolder("   "))
+        app.moveToFolder(app.speechPlans.first { it.title == "A" }, f.id)
+        assertEquals(listOf("B"), app.plansIn(null).map { it.title })
+        assertEquals(listOf("A"), app.plansIn(f.id).map { it.title })
+        // A new speech made inside the folder goes there
+        app.openFolder(f.id)
+        app.createNewPlan()
         app.saveActivePlan()
-        assertEquals(1, app.visiblePlans.size)
-        assertTrue(app.visiblePlans[0].createdAtEpochMs > 0)
+        assertEquals(2, app.plansIn(f.id).size)
+        assertEquals(listOf(f), store.folders)
+        app.deleteFolder(f.id)
+        assertEquals(3, app.plansIn(null).size)
+        assertEquals(3, app.speechPlans.size)
+        assertEquals(null, app.openFolderId)
+    }
+
+    @Test
+    fun liveRunsAreMarked() {
+        val p = FakePlatform()
+        val app = AppController(MemoryStore(listOf(plan("A"))), p, CoroutineScope(Job()))
+        app.openPlan(app.speechPlans[0])
+        app.setRunLive(true)
+        app.startTimer()
+        p.mono += 61_000
+        app.nextSegment()
+        assertEquals(true, app.runs.single().live)
+        app.stopTimer()
+        app.setRunLive(false)
+        app.startTimer(); p.mono += 59_000; app.nextSegment()
+        assertEquals(false, app.runs.first().live)
+    }
+
+    @Test
+    fun practisingOnePartIsNotSaved() {
+        val p = FakePlatform()
+        val two = SpeechPlan(title = "T", segments = listOf(SpeechSegment(title = "A", targetSeconds = 60), SpeechSegment(title = "B", targetSeconds = 120)))
+        val app = AppController(MemoryStore(listOf(two)), p, CoroutineScope(Job()))
+        app.openPlan(app.speechPlans[0])
+        app.startDrill(1)
+        assertEquals(listOf("B"), app.activePlan!!.segments.map { it.title })
+        p.mono += 130_000; app.nextSegment()
+        app.drillAgain()
+        p.mono += 115_000; app.nextSegment()
+        assertEquals(listOf(130, 115), app.drill!!.attempts)
+        app.previousSegment() // undo the last finish
+        assertEquals(listOf(130), app.drill!!.attempts)
+        app.nextSegment()
+        app.stopTimer()
+        assertEquals(0, app.runs.size)
+        assertEquals(AppScreen.READY, app.currentScreen)
+        assertEquals("T", app.activePlan!!.title)
+    }
+
+    @Test
+    fun midweekMeetingHasSongsCommentsAndSpareTime() {
+        val week = MeetingWeek("2026-11-02", "Jeremia 49–50", listOf(1, 44, 33), listOf(
+            MeetingPart(1, "Hjelp andre", 10), MeetingPart(2, "Åndelige perler", 10), MeetingPart(3, "Bibellesning", 4),
+            MeetingPart(4, "Start en samtale", 3), MeetingPart(5, "Følg opp interessen", 4), MeetingPart(6, "Led bibelstudier", 5),
+            MeetingPart(7, "Glem aldri", 15), MeetingPart(8, "Menighetsbibelstudiet", 30)), livingFrom = 7)
+        val m = midweekMeeting(week, NorwegianStrings3, "x")
+        assertEquals("Sang 1 og bønn", m.segments.first().title)
+        assertEquals("Sang 44", m.segments[8].title)
+        assertEquals("7. Glem aldri", m.segments[9].title)
+        assertEquals("Sang 33 og bønn", m.segments.last().title)
+        assertEquals(100 * 60, m.totalTargetSeconds)
+        assertEquals(105 * 60, m.totalPlannedSeconds)
+        assertEquals(105 * 60, weekendMeeting(NorwegianStrings3, "y").totalPlannedSeconds)
+    }
+
+    @Test
+    fun meetingRunCountsSpareTime() {
+        val p = FakePlatform()
+        val app = AppController(MemoryStore(), p, CoroutineScope(Job()))
+        app.setMeetingKind(MeetingKind.WEEKEND)
+        app.startMeeting()
+        assertEquals(AppScreen.TIMER, app.currentScreen)
+        for (secs in listOf(300, 1800, 300, 3600, 300)) { p.mono += secs * 1000L; app.nextSegment() }
+        val run = app.runs.single()
+        assertEquals(WEEKEND_MEETING_ID, run.planId)
+        assertEquals(MeetingKind.WEEKEND, run.meeting)
+        assertEquals(0, run.diffSeconds)
+        assertEquals(EnglishStrings3.meetingEndedOnTime, app.summaryOf(run).meetingLine)
+        app.stopTimer()
+        assertEquals(AppScreen.MEETING, app.currentScreen)
+    }
+
+    @Test
+    fun datesAndWeeks() {
+        assertEquals("2026-11-02", mondayOf("2026-11-04"))
+        assertEquals("2026-11-02", mondayOf("2026-11-02"))
+        assertEquals("2026-11-02", mondayOf("2026-11-08"))
+        assertEquals("2026-11-09", mondayOf("2026-11-04", 1))
+        assertEquals("2026-12-28", mondayOf("2027-01-03"))
+        assertEquals("2.–8. november", weekLabel("2026-11-02", "no"))
+        assertEquals("30. November–6. Dezember", weekLabel("2026-11-30", "de"))
+        assertEquals("November 2–8", weekLabel("2026-11-02", "en"))
+        assertEquals("1:45:00", formatTime(6300))
+    }
+
+    @Test
+    fun summaryPraisesAndNotes() {
+        val run = PracticeRun(planId = "p", planTitle = "T", finishedAtEpochMs = 2, segments = listOf(
+            RunSegment("a", "Intro", 60, 60), RunSegment("b", "Main", 300, 380), RunSegment("c", "End", 60, 58)))
+        val prev = run.copy(id = "old", finishedAtEpochMs = 1, segments = run.segments.map { it.copy(actualSeconds = it.targetSeconds + 60) })
+        val sm = buildSummary(run, prev, 0, EnglishStrings3)
+        assertTrue(sm.praise.contains("2 of 3 parts were on time."))
+        assertTrue(sm.praise.contains("“Intro” hit its time to the second."))
+        assertEquals(listOf("“Main” ran 01:20 over time."), sm.notes)
+        assertEquals("Last time +03:00 · this time +01:18", sm.compare)
+        assertEquals(Verdict.BIT_OVER, verdict(14, 60))
+        assertEquals(Verdict.ON_TIME, verdict(-5, 60))
+        assertEquals(Verdict.UNDER, verdict(-100, 300))
+    }
+
+    @Test
+    fun firstStartShowsTheIntroductionAnUpdateShowsWhatsNew() {
+        val fresh = AppController(MemoryStore(), FakePlatform(), CoroutineScope(Job()))
+        assertTrue(fresh.showTutorial)
+        assertEquals(false, fresh.showWhatsNew)
+        val old = AppController(MemoryStore(listOf(plan("A"))), FakePlatform(), CoroutineScope(Job()))
+        assertEquals(false, old.showTutorial)
+        assertTrue(old.showWhatsNew)
+        assertTrue(old.settings.tutorialSeen)
     }
 
     @Test

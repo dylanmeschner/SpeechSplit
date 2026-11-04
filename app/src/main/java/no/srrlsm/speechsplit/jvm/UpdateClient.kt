@@ -2,6 +2,7 @@ package no.srrlsm.speechsplit.jvm
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import no.srrlsm.speechsplit.core.FetchResult
 import no.srrlsm.speechsplit.core.GITHUB_REPO
 import no.srrlsm.speechsplit.core.ReleaseInfo
 import org.json.JSONArray
@@ -33,6 +34,25 @@ object UpdateClient {
                 if (o.optBoolean("draft") || o.optBoolean("prerelease")) null else parse(o)
             }
         }.getOrNull()
+    }
+
+    /** Any text file, e.g. a meeting program. The status is kept, so "not there" (404) differs from "offline". */
+    suspend fun fetchText(url: String): FetchResult? = withContext(Dispatchers.IO) {
+        try {
+            val conn = URI.create(url).toURL().openConnection() as HttpURLConnection
+            conn.connectTimeout = 8_000
+            conn.readTimeout = 8_000
+            conn.useCaches = false
+            conn.setRequestProperty("User-Agent", "SpeechSplit")
+            try {
+                val code = conn.responseCode
+                FetchResult(code, if (code == 200) conn.inputStream.bufferedReader().use { it.readText() } else "")
+            } finally {
+                conn.disconnect()
+            }
+        } catch (e: Exception) {
+            null
+        }
     }
 
     private fun get(url: String): String? = try {

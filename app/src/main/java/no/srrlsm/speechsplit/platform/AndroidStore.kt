@@ -6,6 +6,9 @@ import no.srrlsm.speechsplit.core.AppSettings
 import no.srrlsm.speechsplit.core.AppStore
 import no.srrlsm.speechsplit.core.CelebrateOptions
 import no.srrlsm.speechsplit.core.ClockMode
+import no.srrlsm.speechsplit.core.Folder
+import no.srrlsm.speechsplit.core.MeetingKind
+import no.srrlsm.speechsplit.core.MeetingProgram
 import no.srrlsm.speechsplit.core.PracticeRun
 import no.srrlsm.speechsplit.core.SpeechPlan
 import no.srrlsm.speechsplit.core.SpeechFile
@@ -22,6 +25,7 @@ import org.json.JSONObject
 class AndroidStore(context: Context) : AppStore {
     private val planPrefs = context.getSharedPreferences("SpeechTimerPrefs", Context.MODE_PRIVATE)
     private val settingsPrefs = context.getSharedPreferences("SpeechTimerSettings", Context.MODE_PRIVATE)
+    private val meetingPrefs = context.getSharedPreferences("SpeechSplitMeetings", Context.MODE_PRIVATE)
 
     // --- Plans ----------------------------------------------------------------
     override fun loadPlans(): List<SpeechPlan> {
@@ -44,8 +48,25 @@ class AndroidStore(context: Context) : AppStore {
 
     override fun exportPlanFile(plan: SpeechPlan, runs: List<PracticeRun>): String = JsonCodec.planFileText(plan, runs)
 
-    override fun exportLibraryFile(plans: List<SpeechPlan>, runs: List<PracticeRun>): String =
-        JsonCodec.libraryFileText(plans, runs)
+    override fun exportLibraryFile(plans: List<SpeechPlan>, runs: List<PracticeRun>, folders: List<Folder>): String =
+        JsonCodec.libraryFileText(plans, runs, folders)
+
+    // --- Folders and meeting programs -----------------------------------------
+    override fun loadFolders(): List<Folder> = JsonCodec.foldersFromJson(planPrefs.getString(KEY_FOLDERS, "[]") ?: "[]")
+
+    override fun saveFolders(folders: List<Folder>) {
+        planPrefs.edit().putString(KEY_FOLDERS, JsonCodec.foldersToJson(folders)).apply()
+    }
+
+    override fun loadMeetingCache(language: String): String? = meetingPrefs.getString(language, null)
+
+    override fun saveMeetingCache(language: String, text: String) {
+        meetingPrefs.edit().putString(language, text).apply()
+    }
+
+    override fun readMeetingProgram(text: String): MeetingProgram? = JsonCodec.meetingProgramFromJson(text)
+
+    override fun hasSavedSettings(): Boolean = settingsPrefs.all.isNotEmpty()
 
     override fun readSpeechFile(text: String, fallbackTitle: String): SpeechFile? =
         JsonCodec.readSpeechFile(text, fallbackTitle)
@@ -84,7 +105,11 @@ class AndroidStore(context: Context) : AppStore {
             lecternMode = getBoolean("lecternMode", false),
             autoUpdateCheck = getBoolean("autoUpdateCheck", true),
             speechSort = JsonCodec.enumOrDefault(getString("speechSort", null), SpeechSort.LAST_USED),
-            wordsPerMinute = getInt("wordsPerMinute", 130).coerceIn(60, 250),
+            tutorialSeen = getBoolean("tutorialSeen", false),
+            lastSeenVersion = getString("lastSeenVersion", "") ?: "",
+            runLive = getBoolean("runLive", false),
+            meetingKind = JsonCodec.enumOrDefault(getString("meetingKind", null), MeetingKind.MIDWEEK),
+            meetingLanguage = getString("meetingLanguage", "") ?: "",
         )
     }
 
@@ -104,12 +129,17 @@ class AndroidStore(context: Context) : AppStore {
             .putBoolean("lecternMode", settings.lecternMode)
             .putBoolean("autoUpdateCheck", settings.autoUpdateCheck)
             .putString("speechSort", settings.speechSort.name)
-            .putInt("wordsPerMinute", settings.wordsPerMinute)
+            .putBoolean("tutorialSeen", settings.tutorialSeen)
+            .putString("lastSeenVersion", settings.lastSeenVersion)
+            .putBoolean("runLive", settings.runLive)
+            .putString("meetingKind", settings.meetingKind.name)
+            .putString("meetingLanguage", settings.meetingLanguage)
             .apply()
     }
 
     private companion object {
         const val KEY_PLANS = "saved_plans"
         const val KEY_RUNS = "practice_runs"
+        const val KEY_FOLDERS = "folders"
     }
 }

@@ -13,6 +13,23 @@ class TimerEngineTest {
     private var t = 0L
     private fun engine() = TimerEngine { t }
 
+    /** The one-pass list gives the same seconds as asking segment by segment, whatever happens. */
+    @Test
+    fun allElapsedMatchesEachSegment() {
+        val e = engine()
+        val r = Random(7)
+        t = 0; e.start(13)
+        repeat(400) {
+            t += r.nextLong(0, 4_000); e.tick()
+            when (r.nextInt(10)) {
+                0, 1, 2 -> e.next()
+                3 -> e.previous()
+                4 -> e.togglePause()
+            }
+            assertEquals((0 until 13).map { e.elapsedSeconds(it) }, e.allElapsedSeconds())
+        }
+    }
+
     /** The reported bug: 00:00 on the segment clock gave "1 s over" in the total. */
     @Test
     fun finishingAtZeroIsExactlyOnTarget() {

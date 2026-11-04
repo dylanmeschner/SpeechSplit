@@ -30,7 +30,7 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import no.srrlsm.speechsplit.jvm.DocumentReader
+import no.srrlsm.speechsplit.core.MAX_IMPORT_BYTES
 import no.srrlsm.speechsplit.core.AppController
 import no.srrlsm.speechsplit.core.ReleaseInfo
 import no.srrlsm.speechsplit.core.ThemeMode
@@ -131,7 +131,7 @@ class MainActivity : ComponentActivity(), UiActions {
         handleIncoming(intent)
     }
 
-    // --- Importing documents ----------------------------------------------------
+    // --- Importing speech files ---------------------------------------------------
     private fun handleIncoming(intent: Intent?) {
         intent ?: return
         when (intent.action) {
@@ -142,7 +142,7 @@ class MainActivity : ComponentActivity(), UiActions {
                 val text = intent.getStringExtra(Intent.EXTRA_TEXT)
                 when {
                     stream != null -> importUri(stream)
-                    !text.isNullOrBlank() -> if (!vm.app.importText(text)) toast(vm.app.strings.importNothing)
+                    !text.isNullOrBlank() -> if (!vm.app.importText(text)) toast(vm.app.strings3.importPasteOnly)
                 }
             }
         }
@@ -163,7 +163,7 @@ class MainActivity : ComponentActivity(), UiActions {
                 importUri(uri)
             } else {
                 item?.text?.toString()?.takeIf { it.isNotBlank() }?.let { text ->
-                    if (!vm.app.importText(text)) toast(vm.app.strings.importNothing)
+                    if (!vm.app.importText(text)) toast(vm.app.strings3.importPasteOnly)
                 }
             }
             true
@@ -181,7 +181,7 @@ class MainActivity : ComponentActivity(), UiActions {
                     } ?: uri.lastPathSegment ?: "document"
                     val bytes = contentResolver.openInputStream(uri)?.use { input ->
                         val buf = input.readBytes()
-                        if (buf.size > DocumentReader.MAX_BYTES) null else buf
+                        if (buf.size > MAX_IMPORT_BYTES) null else buf
                     }
                     bytes?.let { name to it }
                 } catch (e: Exception) {
@@ -199,7 +199,7 @@ class MainActivity : ComponentActivity(), UiActions {
         try {
             openDocument.launch(DOCUMENT_TYPES)
         } catch (e: Exception) {
-            toast(vm.app.strings.importUnsupported)
+            toast(vm.app.strings3.importOnlyFiles)
         }
     }
 
@@ -341,11 +341,6 @@ class MainActivity : ComponentActivity(), UiActions {
 
     private companion object {
         val DOCUMENT_TYPES = arrayOf(
-            "application/pdf",
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            "application/vnd.oasis.opendocument.text",
-            "application/rtf",
-            "text/*",
             // Saved speeches (.speechsplit). Cloud drives often report unknown files as octet-stream.
             SPEECH_FILE_MIME,
             "application/json",

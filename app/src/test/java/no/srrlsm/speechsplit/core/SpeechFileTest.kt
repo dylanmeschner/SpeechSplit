@@ -26,7 +26,11 @@ class SpeechFileTest {
         override fun exportPlan(plan: SpeechPlan) = JsonCodec.planToJson(plan, includeIds = false).toString()
         override fun importPlan(text: String, fallbackTitle: String) = JsonCodec.planFromJson(JSONObject(text), fallbackTitle)
         override fun exportPlanFile(plan: SpeechPlan, runs: List<PracticeRun>) = JsonCodec.planFileText(plan, runs)
-        override fun exportLibraryFile(plans: List<SpeechPlan>, runs: List<PracticeRun>) = JsonCodec.libraryFileText(plans, runs)
+        override fun exportLibraryFile(plans: List<SpeechPlan>, runs: List<PracticeRun>, folders: List<Folder>) = JsonCodec.libraryFileText(plans, runs, folders)
+        var folders = emptyList<Folder>()
+        override fun loadFolders() = folders
+        override fun saveFolders(folders: List<Folder>) { this.folders = folders }
+        override fun readMeetingProgram(text: String) = JsonCodec.meetingProgramFromJson(text)
         override fun readSpeechFile(text: String, fallbackTitle: String) = JsonCodec.readSpeechFile(text, fallbackTitle)
     }
 
@@ -118,6 +122,41 @@ class SpeechFileTest {
         assertEquals(listOf(talk.id, toast.id), to.plans.map { it.id })
         assertEquals(1, to.runs.size)
         assertEquals(AppScreen.LIBRARY, target.currentScreen)
+    }
+
+    @Test
+    fun libraryKeepsFoldersAndMeetingHistory() {
+        val a = JsonStore()
+        val app1 = app(a)
+        val f = app1.createFolder("Foredrag")!!
+        a.plans = listOf(talk.copy(folderId = f.id))
+        val app2 = app(a)
+        val meetingRun = PracticeRun(planId = MIDWEEK_MEETING_ID, planTitle = "M", finishedAtEpochMs = 9, segments = listOf(RunSegment("x", "Sang", 300, 290)),
+            live = true, meeting = MeetingKind.MIDWEEK, bufferSeconds = 300)
+        a.runs = listOf(meetingRun)
+        val (_, text) = app(a).exportFile(null, ExportScope.LIBRARY)
+        val b = JsonStore()
+        val other = app(b)
+        assertTrue(other.importPlan(text))
+        other.applyLibrary(replace = true)
+        assertEquals(listOf("Foredrag"), b.folders.map { it.name })
+        assertEquals(f.id, b.plans.single().folderId)
+        val r = b.runs.single()
+        assertEquals(MeetingKind.MIDWEEK, r.meeting)
+        assertEquals(300, r.bufferSeconds)
+        assertEquals(-310, r.diffSeconds)
+        assertTrue(r.live)
+    }
+
+    @Test
+    fun meetingProgramFileReads() {
+        val text = """{"format":1,"lang":"no","weeks":[{"start":"2026-11-02","reading":"Jeremia 49–50","songs":[1,44,33],
+            "parts":[{"n":1,"title":"Hjelp andre","min":10},{"n":7,"title":"Glem aldri","min":15}],"livingFrom":7}],"updated":"2026-11-04"}"""
+        val p = JsonCodec.meetingProgramFromJson(text)!!
+        assertEquals("2026-11-04", p.updated)
+        assertEquals(listOf(1, 44, 33), p.weeks.single().songs)
+        assertEquals(MeetingPart(7, "Glem aldri", 15), p.weeks.single().parts[1])
+        assertNull(JsonCodec.meetingProgramFromJson("not json"))
     }
 
     @Test

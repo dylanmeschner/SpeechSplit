@@ -15,12 +15,8 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import no.srrlsm.speechsplit.MainActivity
 import no.srrlsm.speechsplit.R
-import com.tom_roush.pdfbox.android.PDFBoxResourceLoader
-import com.tom_roush.pdfbox.pdmodel.PDDocument
-import com.tom_roush.pdfbox.text.PDFTextStripper
-import no.srrlsm.speechsplit.core.DocBlock
+import no.srrlsm.speechsplit.core.FetchResult
 import no.srrlsm.speechsplit.core.PlatformServices
-import no.srrlsm.speechsplit.jvm.DocumentReader
 import no.srrlsm.speechsplit.core.ReleaseInfo
 import no.srrlsm.speechsplit.jvm.UpdateClient
 import no.srrlsm.speechsplit.core.Strings
@@ -51,24 +47,12 @@ class AndroidPlatform(context: Context) : PlatformServices {
 
     override suspend fun fetchReleases(): List<ReleaseInfo>? = UpdateClient.fetchReleases()
 
-    // --- Reading speech documents ---------------------------------------------
-    private var pdfReady = false
+    override suspend fun fetchText(url: String): FetchResult? = UpdateClient.fetchText(url)
 
-    override fun readDocument(fileName: String, bytes: ByteArray): List<DocBlock>? =
-        DocumentReader.read(fileName, bytes, pdfToText = ::pdfText)
-
-    /** Text of a PDF, with blank lines between paragraphs (PdfBox for Android). */
-    private fun pdfText(bytes: ByteArray): String {
-        if (!pdfReady) {
-            PDFBoxResourceLoader.init(app)
-            pdfReady = true
-        }
-        return PDDocument.load(bytes).use { doc ->
-            PDFTextStripper().apply {
-                sortByPosition = true
-                paragraphEnd = "\n\n"
-            }.getText(doc)
-        }
+    override fun localDateIso(epochMs: Long): String {
+        val c = java.util.Calendar.getInstance()
+        c.timeInMillis = epochMs
+        return "%04d-%02d-%02d".format(Locale.ROOT, c.get(java.util.Calendar.YEAR), c.get(java.util.Calendar.MONTH) + 1, c.get(java.util.Calendar.DAY_OF_MONTH))
     }
 
     override fun monotonicMs(): Long = SystemClock.elapsedRealtime()

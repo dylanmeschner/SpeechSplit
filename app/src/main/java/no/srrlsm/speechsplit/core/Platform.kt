@@ -22,8 +22,8 @@ interface AppStore {
     /** A .speechsplit file with one speech, and its practice history if [runs] isn't empty. */
     fun exportPlanFile(plan: SpeechPlan, runs: List<PracticeRun> = emptyList()): String = exportPlan(plan)
 
-    /** A .speechsplit file with every speech (archived ones too) and all practice history. */
-    fun exportLibraryFile(plans: List<SpeechPlan>, runs: List<PracticeRun>): String = ""
+    /** A .speechsplit file with every speech (archived ones too), the folders and all practice history. */
+    fun exportLibraryFile(plans: List<SpeechPlan>, runs: List<PracticeRun>, folders: List<Folder> = emptyList()): String = ""
 
     /** Reads a .speechsplit file, an older export or pasted export text. Null if it isn't one. */
     fun readSpeechFile(text: String, fallbackTitle: String): SpeechFile? =
@@ -31,6 +31,19 @@ interface AppStore {
 
     /** Writes anything still waiting to be saved. Called when the app closes. */
     fun flush() {}
+
+    fun loadFolders(): List<Folder> = emptyList()
+    fun saveFolders(folders: List<Folder>) {}
+
+    /** The last meeting program file downloaded for a language ("no", "en", "de"), as text. */
+    fun loadMeetingCache(language: String): String? = null
+    fun saveMeetingCache(language: String, text: String) {}
+
+    /** Reads a meeting program file (docs/meetings/<lang>.json). Null if it isn't one. */
+    fun readMeetingProgram(text: String): MeetingProgram? = null
+
+    /** True if settings were ever saved: the app was used before (so it's an update, not a first start). */
+    fun hasSavedSettings(): Boolean = false
 }
 
 /** What a .speechsplit file holds: one speech (maybe with its history), or a whole library backup. */
@@ -38,6 +51,7 @@ data class SpeechFile(
     val plans: List<SpeechPlan>,
     val runs: List<PracticeRun>,
     val isLibrary: Boolean,
+    val folders: List<Folder> = emptyList(),
 )
 
 /** What "Export" puts in the file. */
@@ -86,11 +100,11 @@ interface PlatformServices {
     /** Extra lines for the feedback email, e.g. where a freeze log was written. Null if none. */
     val diagnosticsNote: String? get() = null
 
-    /**
-     * Reads a speech document (PDF, Word, OpenDocument, text). Empty if it has no readable text,
-     * null if the file type isn't supported. Called off the main thread.
-     */
-    fun readDocument(fileName: String, bytes: ByteArray): List<DocBlock>? = null
+    /** Downloads a text file (the meeting programs). Null when offline or the site can't be reached. */
+    suspend fun fetchText(url: String): FetchResult? = null
+
+    /** Today's date on this device (local time zone), "2026-11-04". */
+    fun localDateIso(epochMs: Long): String = isoDate(epochMs)
 
     /** Two-letter language code of the device, e.g. "nb", "de", "en". */
     val systemLanguage: String

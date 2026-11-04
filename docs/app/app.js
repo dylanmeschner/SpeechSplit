@@ -7,15 +7,17 @@
 // ============================================================================
 (function () {
   "use strict";
-  var APP_VERSION = "2.3";
+  var APP_VERSION = "3.0";
   var REPO = "dylanmeschner/SpeechSplit";
   var SITE = "https://dylanmeschner.github.io/SpeechSplit/";
   var RELEASES = "https://github.com/" + REPO + "/releases";
   var FEEDBACK_EMAIL = "dylan123@live.no";
   var STORE_KEY = "speechsplit.data.v1", RUN_KEY = "speechsplit.run.v1";
   var MAX_RUNS = 50, RECENT = 5, MIN_RUNS_FOR_SUGGESTION = 3;
-  var WARNING_OPTIONS = [0, 5, 10, 15, 20], CELEBRATE_OPTIONS = [-1, 0, 2, 5], QUICK_OPTIONS = [5, 10, 15, 20, 30, 45], PACE_OPTIONS = [110, 130, 150];
-  var IM = window.SpeechImport;
+  var WARNING_OPTIONS = [0, 5, 10, 15, 20], CELEBRATE_OPTIONS = [-1, 0, 2, 5], QUICK_OPTIONS = [5, 10, 15, 20, 30, 45];
+  var MEET_KEY = "speechsplit.meetings.v1.";  // + language: the saved meeting programs
+  var MIDWEEK_ID = "meeting-midweek", WEEKEND_ID = "meeting-weekend";
+  var MIDWEEK_BUFFER = 5 * 60;                // the midweek meeting has 5 minutes to spare
 
   // --- Icons (Material Symbols paths) ------------------------------------------
   var P = {
@@ -60,6 +62,14 @@
     sparkle: "M19 9l1.25-2.75L23 5l-2.75-1.25L19 1l-1.25 2.75L15 5l2.75 1.25L19 9zm-7.5.5L9 4 6.5 9.5 1 12l5.5 2.5L9 20l2.5-5.5L17 12l-5.5-2.5zM19 15l-1.25 2.75L15 19l2.75 1.25L19 23l1.25-2.75L23 19l-2.75-1.25L19 15z",
     clock: "M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z",
     install: "M18 1.01L8 1c-1.1 0-2 .9-2 2v3h2V5h10v14H8v-1H6v3c0 1.1.9 2 2 2h10c1.1 0 2-.8 2-2V3c0-1.1-.9-1.99-2-1.99zM10 15h2V8H5v2h3.59L3 15.59 4.41 17 10 11.41z",
+    folder: "M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z",
+    newFolder: "M20 6h-8l-2-2H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-1 8h-3v3h-2v-3h-3v-2h3V9h2v3h3v2z",
+    move: "M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6 12v-3h-4v-4h4V8l5 5-5 5z",
+    groups: "M12 12.75c1.63 0 3.07.39 4.24.9 1.08.48 1.76 1.56 1.76 2.73V18H6v-1.61c0-1.18.68-2.26 1.76-2.73 1.17-.52 2.61-.91 4.24-.91zM4 13c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm1.13 1.1c-.37-.06-.74-.1-1.13-.1-.99 0-1.93.21-2.78.58C.48 14.9 0 15.62 0 16.43V18h4.5v-1.61c0-.83.23-1.61.63-2.29zM20 13c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm4 3.43c0-.81-.48-1.53-1.22-1.85-.85-.37-1.79-.58-2.78-.58-.39 0-.76.04-1.13.1.4.68.63 1.46.63 2.29V18H24v-1.57zM12 6c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3z",
+    left: "M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z",
+    history: "M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z",
+    replay: "M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z",
+    school: "M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82zM12 3L1 9l11 6 9-4.91V17h2V9L12 3z",
     inventory: "M20 2H4c-1 0-2 .9-2 2v3.01c0 .72.43 1.34 1 1.69V20c0 1.1 1.1 2 2 2h14c.9 0 2-.9 2-2V8.7c.57-.35 1-.97 1-1.69V4c0-1.1-1-2-2-2zm-5 12H9v-2h6v2zm5-7H4V4l16-.02V7z",
   };
   function icon(name) { return '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="' + P[name] + '"/></svg>'; }
@@ -68,7 +78,12 @@
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
   function newId() { return (crypto.randomUUID && crypto.randomUUID()) || "id-" + Date.now().toString(36) + Math.random().toString(36).slice(2); }
   function pad2(n) { return String(n).padStart(2, "0"); }
-  function fmt(sec) { var a = Math.abs(sec); return (sec < 0 ? "-" : "") + pad2(Math.floor(a / 60)) + ":" + pad2(a % 60); }
+  /** "04:30", "-00:05", and "1:45:00" from an hour up (a whole meeting). */
+  function fmt(sec) {
+    var a = Math.abs(sec), sign = sec < 0 ? "-" : "";
+    if (a >= 3600) return sign + Math.floor(a / 3600) + ":" + pad2(Math.floor(a % 3600 / 60)) + ":" + pad2(a % 60);
+    return sign + pad2(Math.floor(a / 60)) + ":" + pad2(a % 60);
+  }
   function fmtDiff(d) { return d > 0 ? "+" + fmt(d) : fmt(d); }
   /** "4.30", "4,30" and "4:30" all mean 4 min 30 s, like in the app. */
   function parseTime(input) {
@@ -91,14 +106,18 @@
   var DEFAULT_SETTINGS = {
     language: "SYSTEM", themeMode: "SYSTEM", keepScreenOn: true, clockMode: "REMAINING", warningPercent: 10,
     showAdjusted: true, flashAlerts: true, vibrateAlerts: false, celebrateTolerance: 0, lecternMode: false,
-    speechSort: "LAST_USED", wordsPerMinute: 130, installHintHidden: false,
+    speechSort: "LAST_USED", installHintHidden: false,
+    tutorialSeen: false, lastSeenVersion: "", runMode: "practice", meetingKind: "midweek", meetingLang: "",
   };
-  var data = { plans: [], runs: [], settings: Object.assign({}, DEFAULT_SETTINGS) };
+  var data = { plans: [], runs: [], folders: [], settings: Object.assign({}, DEFAULT_SETTINGS) };
+  var hadData = false; // something was saved before this start (an existing user)
   function load() {
     try {
       var raw = localStorage.getItem(STORE_KEY);
       if (raw) {
+        hadData = true;
         var d = JSON.parse(raw);
+        data.folders = Array.isArray(d.folders) ? d.folders.filter(function (x) { return x && x.id && x.name; }) : [];
         data.plans = Array.isArray(d.plans) ? d.plans.filter(function (p) { return p && Array.isArray(p.segments); }) : [];
         data.runs = Array.isArray(d.runs) ? d.runs : [];
         data.settings = Object.assign({}, DEFAULT_SETTINGS, d.settings || {});
@@ -127,6 +146,8 @@
     return sys === "de" ? "de" : (sys === "nb" || sys === "nn" || sys === "no") ? "no" : "en";
   }
   function t(key) { var v = window.STR[lang][key]; return v == null ? (window.STR.en[key] || key) : v; }
+  /** Texts added in 3.0 (strings3.js). Some are functions: t3("songN")(44). */
+  function t3(key) { var v = window.STR3[lang][key]; return v == null ? window.STR3.en[key] : v; }
   // Texts with numbers in them (functions in the app's Strings.kt)
   var F = {
     en: {
@@ -202,10 +223,14 @@
 
   // --- App state ---------------------------------------------------------------
   var ui = {
-    screen: "library",       // library | archive | settings | edit | ready | timer | history
-    plan: null,              // the active speech (a copy while editing)
+    screen: "library",       // library | archive | settings | edit | ready | timer | history | meeting
+    plan: null,              // the active speech (a copy while editing), or a meeting / one-part drill
     editOriginal: null, editReturn: "library", quick: false,
-    importDraft: null, busy: false, expandedRun: null, celebrating: false,
+    expandedRun: null, celebrating: false,
+    folder: null,            // id of the open folder in the library (null: the library itself)
+    drill: null,             // practising one part: { planId, index, attempts: [seconds...] }
+    historyFilter: "all",    // all | practice | live
+    weekOffset: 0,           // meeting mode: weeks from this week
   };
   function planById(id) { return data.plans.filter(function (p) { return p.id === id; })[0]; }
   function recent(p) { return Math.max(p.lastUsedAt || 0, p.createdAt || 0); }
@@ -218,6 +243,48 @@
     });
   }
   function visiblePlans() { return sorted(data.plans.filter(function (p) { return !p.archived; })); }
+  // --- Folders -----------------------------------------------------------------
+  function folderById(id) { return id ? data.folders.filter(function (x) { return x.id === id; })[0] || null : null; }
+  /** Speeches in a folder, or (null) the ones in no folder. A speech whose folder is gone counts as in none. */
+  function plansIn(folderId) {
+    return visiblePlans().filter(function (p) { return folderId ? p.folderId === folderId : !folderById(p.folderId); });
+  }
+  function sortedFolders() { return data.folders.slice().sort(function (a, b) { return a.name.localeCompare(b.name, undefined, { sensitivity: "base" }); }); }
+  function folderDialog(folder, onDone) {
+    var d = dialog({ title: folder ? t3("renameFolder") : t3("newFolder"),
+      body: '<label class="field" style="margin-top:0"><span>' + esc(t3("folderName")) + '</span><input id="fname" maxlength="60" value="' + esc(folder ? folder.name : "") + '"></label>',
+      actions: [{ label: t("cancel"), cls: "tbtn" }, { label: folder ? t3("save") : t3("create"), id: "f-ok", onClick: ok }] });
+    var input = d.querySelector("#fname");
+    input.addEventListener("keydown", function (e) { if (e.key === "Enter") ok(); });
+    function ok() {
+      var name = input.value.trim();
+      if (!name) { input.focus(); return; }
+      closeDialog();
+      if (folder) { folder.name = name; save(); render(); if (onDone) onDone(folder); return; }
+      var f = { id: newId(), name: name, createdAt: Date.now() };
+      data.folders.push(f); save();
+      if (onDone) onDone(f); else render();
+    }
+  }
+  function deleteFolderDialog(folder) {
+    confirmDialog(t3("deleteFolderTitle")(folder.name), t3("deleteFolderText"), t("delete"), function () {
+      data.folders = data.folders.filter(function (x) { return x.id !== folder.id; });
+      data.plans.forEach(function (p) { if (p.folderId === folder.id) delete p.folderId; });
+      save(); ui.folder = null; render();
+    }, true);
+  }
+  function moveToFolder(p, folderId) {
+    replacePlan(p.id, function (x) { if (folderId) x.folderId = folderId; else delete x.folderId; return x; });
+    var f = folderById(folderId);
+    toast(f ? t3("movedTo")(f.name) : t3("movedOut"));
+    render();
+  }
+  function moveMenu(anchor, p) {
+    var items = [{ label: t3("moveToFolder") }, { radio: !folderById(p.folderId), text: t3("noFolder"), onClick: function () { moveToFolder(p, null); } }];
+    sortedFolders().forEach(function (f) { items.push({ radio: p.folderId === f.id, text: f.name, onClick: function () { moveToFolder(p, f.id); } }); });
+    items.push({ icon: "newFolder", text: t3("newFolder") + "…", onClick: function () { folderDialog(null, function (f) { moveToFolder(p, f.id); }); } });
+    menu(anchor, items);
+  }
   function archivedPlans() { return sorted(data.plans.filter(function (p) { return p.archived; })); }
   function runsFor(id) { return data.runs.filter(function (r) { return r.planId === id; }); }
   function replacePlan(id, fn) {
@@ -241,7 +308,16 @@
   }
   function elapsedOf(i) { return Math.floor(msThrough(i) / 1000) - Math.floor(msThrough(i - 1) / 1000); }
   function totalElapsed() { return Math.floor((sum(E.rec) + live()) / 1000); }
-  function allElapsed() { var out = []; for (var i = 0; i < E.count; i++) out.push(elapsedOf(i)); return out; }
+  /** Same as elapsedOf for each segment, in one pass (it runs every tick, and a meeting has 13 parts). */
+  function allElapsed() {
+    var out = [], sum = 0, prev = 0, l = live();
+    for (var i = 0; i < E.count; i++) {
+      sum += E.rec[i] || 0;
+      var secs = Math.floor((i >= E.index ? sum + l : sum) / 1000);
+      out.push(secs - prev); prev = secs;
+    }
+    return out;
+  }
   function tickNow() { E.now = clockMs(); }
   function eStart(n) { E.running = false; E.count = n; E.rec = new Array(n).fill(0); E.index = 0; E.finAt = null; eResume(); }
   function eResume() { if (E.running || isFinished() || !isActive()) return; E.start = clockMs(); E.now = E.start; E.running = true; }
@@ -276,17 +352,20 @@
   function persistRun() {
     try {
       if (!isActive() || !ui.plan) { localStorage.removeItem(RUN_KEY); return; }
-      localStorage.setItem(RUN_KEY, JSON.stringify({ E: E, plan: ui.plan, quick: ui.quick, recordedRunId: recordedRunId }));
+      localStorage.setItem(RUN_KEY, JSON.stringify({ E: E, plan: ui.plan, quick: ui.quick, drill: ui.drill, recordedRunId: recordedRunId }));
     } catch (e) {}
   }
   function restoreRun() {
     try {
       var r = JSON.parse(localStorage.getItem(RUN_KEY) || "null");
       if (!r || !r.plan || !r.E || !r.E.count) return false;
-      if (!r.quick && !planById(r.plan.id)) return false;
+      // A quick timer, a meeting and a one-part drill aren't saved speeches: they come back as they were
+      var own = r.quick || r.plan.meeting || r.plan.drill;
+      if (!own && !planById(r.plan.id)) return false;
+      if (r.plan.drill && !(r.drill && planById(r.drill.planId))) return false;
       Object.assign(E, r.E);
-      ui.plan = r.quick ? r.plan : planById(r.plan.id);
-      ui.quick = !!r.quick; recordedRunId = r.recordedRunId || null;
+      ui.plan = own ? r.plan : planById(r.plan.id);
+      ui.quick = !!r.quick; ui.drill = r.plan.drill ? r.drill : null; recordedRunId = r.recordedRunId || null;
       if (ui.plan.segments.length !== E.count) { eStop(); return false; }
       ui.screen = "timer";
       tickNow();
@@ -299,13 +378,17 @@
     var plan = ui.plan;
     if (!plan || !isActive()) return null;
     var secs = allElapsed();
-    return { id: newId(), planId: plan.id, planTitle: plan.title, finishedAt: Date.now(),
+    var run = { id: newId(), planId: plan.id, planTitle: plan.title, finishedAt: Date.now(),
       segments: plan.segments.map(function (s, i) { return { segmentId: s.id, title: s.title, target: s.targetSeconds, actual: secs[i] || 0 }; }) };
+    if (plan.meeting) { run.meeting = plan.meeting.kind; run.buffer = bufferOf(plan); run.live = true; }
+    else if (data.settings.runMode === "live") run.live = true;
+    return run;
   }
   function runTotal(r, k) { return sum(r.segments.map(function (s) { return s[k]; })); }
-  function runDiff(r) { return runTotal(r, "actual") - runTotal(r, "target"); }
+  /** Over (+) or under (-) the plan. A meeting's buffer counts as planned time. */
+  function runDiff(r) { return runTotal(r, "actual") - runTotal(r, "target") - (r.buffer || 0); }
   function recordRun() {
-    if (ui.quick || !isFinished() || recordedRunId) return;
+    if (ui.quick || (ui.plan && ui.plan.drill) || !isFinished() || recordedRunId) return;
     var run = snapshot();
     if (!run) return;
     recordedRunId = run.id;
@@ -342,11 +425,141 @@
   }
   function report(run) {
     var lines = ["Speech Split · " + run.planTitle, fmtDate(run.finishedAt),
-      t("reportTotal") + " " + fmt(runTotal(run, "actual")) + " (" + f("reportPlan")(fmt(runTotal(run, "target"))) + ")  " + fmtDiff(runDiff(run)), ""];
+      t("reportTotal") + " " + fmt(runTotal(run, "actual")) + " (" + f("reportPlan")(fmt(runTotal(run, "target") + (run.buffer || 0))) + ")  " + fmtDiff(runDiff(run)), ""];
     run.segments.forEach(function (s, i) {
       lines.push((i + 1) + ". " + s.title + "  " + fmt(s.actual) + " (" + f("reportPlan")(fmt(s.target)) + ")  " + fmtDiff(s.actual - s.target));
     });
     return lines.join("\n");
+  }
+
+  // --- Meeting mode ------------------------------------------------------------------
+  // The weekly programs come from the website (docs/meetings/<lang>.json, made from the meeting
+  // workbook with tools/workbook_to_json.py). The last copy is kept here, so it works offline.
+  var meet = {}, meetState = {}; // language -> program file; language -> "loading" | "ok" | "failed"
+  function meetingLang() { var l = data.settings.meetingLang; return l === "no" || l === "en" || l === "de" ? l : lang; }
+  function meetingData(l) {
+    if (meet[l] === undefined) { try { meet[l] = JSON.parse(localStorage.getItem(MEET_KEY + l) || "null"); } catch (e) { meet[l] = null; } }
+    return meet[l];
+  }
+  function fetchMeetings(l, force) {
+    if (meetState[l] === "loading" || (meetState[l] === "ok" && !force)) return;
+    meetState[l] = "loading";
+    fetch("../meetings/" + l + ".json", { cache: "no-cache" })
+      .then(function (r) { if (r.status === 404) return "missing"; if (!r.ok) throw new Error(); return r.json(); })
+      .then(function (d) {
+        if (d === "missing") { meetState[l] = "missing"; return; } // no program in this language (yet)
+        if (!d || !Array.isArray(d.weeks)) throw new Error();
+        meet[l] = d; meetState[l] = "ok";
+        try { localStorage.setItem(MEET_KEY + l, JSON.stringify(d)); } catch (e) {}
+      })
+      .catch(function () { meetState[l] = "failed"; })
+      .then(function () { if (ui.screen === "meeting") render(); });
+  }
+  function isoDay(d) { return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate()); }
+  function parseDay(s) { var p = String(s).split("-"); return new Date(+p[0], +p[1] - 1, +p[2], 12); }
+  /** Monday of this week, plus [offset] weeks, as "2026-11-02". */
+  function mondayIso(offset) {
+    var d = new Date(); d.setHours(12, 0, 0, 0);
+    d.setDate(d.getDate() - (d.getDay() + 6) % 7 + 7 * offset);
+    return isoDay(d);
+  }
+  /** "2.–8. november", "November 2–8", "30. November–6. Dezember". */
+  function weekLabel(startIso, l) {
+    var a = parseDay(startIso), b = new Date(a); b.setDate(a.getDate() + 6);
+    var loc = l === "no" ? "nb-NO" : l === "de" ? "de-DE" : "en-US";
+    var month = function (d) { try { return d.toLocaleDateString(loc, { month: "long" }); } catch (e) { return String(d.getMonth() + 1); } };
+    var same = a.getMonth() === b.getMonth();
+    if (l === "en") return month(a) + " " + a.getDate() + "–" + (same ? "" : month(b) + " ") + b.getDate();
+    return a.getDate() + "." + (same ? "" : " " + month(a)) + "–" + b.getDate() + ". " + month(b);
+  }
+  function weekFor(l, startIso) {
+    var d = meetingData(l);
+    return d ? d.weeks.filter(function (w) { return w.start === startIso && Array.isArray(w.parts) && w.parts.length; })[0] || null : null;
+  }
+  /** Songs, comments and the week's parts, with the middle song before "Our Christian Life". */
+  function midweekPlan(week, l) {
+    var S = window.STR3[l] || window.STR3.en, songs = week.songs || [], segs = [];
+    var song = function (i, prayer) { var n = songs[i]; return n ? (prayer ? S.songPrayerN(n) : S.songN(n)) : (prayer ? S.songPrayer : S.song); };
+    segs.push({ id: "mw-song1", title: song(0, true), targetSeconds: 300 });
+    segs.push({ id: "mw-open", title: S.openingComments, targetSeconds: 60 });
+    var living = week.livingFrom || 7, songDone = false;
+    week.parts.forEach(function (p) {
+      if (!songDone && p.n >= living) { segs.push({ id: "mw-song2", title: song(1, false), targetSeconds: 300 }); songDone = true; }
+      segs.push({ id: "mw-p" + p.n, title: p.n + ". " + p.title, targetSeconds: Math.max(0, p.min | 0) * 60 });
+    });
+    if (!songDone) segs.push({ id: "mw-song2", title: song(1, false), targetSeconds: 300 });
+    segs.push({ id: "mw-close", title: S.concludingComments, targetSeconds: 180 });
+    segs.push({ id: "mw-song3", title: song(2, true), targetSeconds: 300 });
+    return { id: MIDWEEK_ID, title: t3("meetingMidweekTitle")(weekLabel(week.start, lang)), segments: segs,
+      meeting: { kind: "midweek", buffer: MIDWEEK_BUFFER, week: week.start, reading: week.reading || "" } };
+  }
+  /** The weekend meeting is the same every week: 1 hour 45 minutes. */
+  function weekendPlan(l) {
+    var S = window.STR3[l] || window.STR3.en;
+    return { id: WEEKEND_ID, title: t3("meetingWeekendTitle"), meeting: { kind: "weekend", buffer: 0 }, segments: [
+      { id: "we-song1", title: S.songPrayer, targetSeconds: 300 },
+      { id: "we-talk", title: S.publicTalk, targetSeconds: 30 * 60 },
+      { id: "we-song2", title: S.song, targetSeconds: 300 },
+      { id: "we-wt", title: S.watchtowerStudy, targetSeconds: 60 * 60 },
+      { id: "we-song3", title: S.songPrayer, targetSeconds: 300 },
+    ] };
+  }
+  /** The meeting chosen on the meeting screen (null: no program for that week). */
+  function chosenMeeting() {
+    var l = meetingLang();
+    if (data.settings.meetingKind === "weekend") return weekendPlan(l);
+    var w = weekFor(l, mondayIso(ui.weekOffset));
+    return w ? midweekPlan(w, l) : null;
+  }
+  function bufferOf(p) { return p && p.meeting ? p.meeting.buffer || 0 : 0; }
+  /** What the run is measured against at the end: the program, plus a meeting's buffer. */
+  function planTarget(p) { return totalTarget(p) + bufferOf(p); }
+
+  // --- Summary after a run ---------------------------------------------------------
+  /** ok | bitOver | over | bitUnder | under. "ok": within 5 s or 5 %; "a bit": within 15 s or 15 %. */
+  function verdict(d, target) {
+    var a = Math.abs(d), near = Math.max(5, Math.round(target * 0.05)), bit = Math.max(15, Math.round(target * 0.15));
+    if (a <= near) return "ok";
+    return d > 0 ? (a <= bit ? "bitOver" : "over") : (a <= bit ? "bitUnder" : "under");
+  }
+  var VERDICT_KEY = { ok: "verdictOnTime", bitOver: "verdictBitOver", over: "verdictOver", bitUnder: "verdictBitUnder", under: "verdictUnder" };
+  /** Praise, plain observations ("Part 3 ran 1:20 over time") and a comparison with [prev]. */
+  function buildSummary(run, prev) {
+    var praise = [], notes = [], segs = run.segments, total = runDiff(run), tol = Math.max(0, data.settings.celebrateTolerance);
+    var meeting = !!run.meeting;
+    if (total === 0) praise.push(t3("praisePerfect"));
+    else if (Math.abs(total) <= Math.max(10, tol)) praise.push(t3("praiseTotalClose")(fmt(Math.abs(total))));
+    else if (total < 0 && meeting) praise.push(t3("praiseUnder")(fmt(-total)));
+    var onTime = segs.filter(function (s) { return verdict(s.actual - s.target, s.target) === "ok"; }).length;
+    if (segs.length > 1 && onTime * 2 >= segs.length) praise.push(t3("praiseSegments")(onTime, segs.length));
+    var exact = segs.filter(function (s) { return s.target > 0 && s.actual === s.target; })[0];
+    if (exact && segs.length > 1) praise.push(t3("praiseExact")(exact.title));
+    if (prev) {
+      var gain = Math.abs(runDiff(prev)) - Math.abs(total);
+      if (gain >= 5) praise.push(t3("praiseBetter")(fmt(gain)));
+    }
+    var off = segs.map(function (s) { var d = s.actual - s.target; return { s: s, d: d, v: verdict(d, s.target) }; })
+      .filter(function (x) { return x.v === "over" || x.v === "bitOver" || x.v === "under"; })
+      .sort(function (a, b) { return Math.abs(b.d) - Math.abs(a.d); });
+    off.slice(0, 3).forEach(function (x) { notes.push(x.d > 0 ? t3("noteOver")(x.s.title, fmt(x.d)) : t3("noteUnder")(x.s.title, fmt(-x.d))); });
+    if (off.length > 3) notes.push(t3("noteMore")(off.length - 3));
+    return {
+      praise: praise.slice(0, 3), notes: notes,
+      compare: prev ? t3("compareLast")(fmtDiff(runDiff(prev)), fmtDiff(total)) : null,
+      meetingLine: meeting ? (total < 0 ? t3("meetingEndedEarly")(fmt(-total)) : total > 0 ? t3("meetingEndedLate")(fmt(total)) : t3("meetingEndedOnTime")) : null,
+    };
+  }
+  function summaryHtml(sm) {
+    var h = "";
+    if (sm.praise.length) h += '<div class="sum good"><div class="label">' + esc(t3("praiseTitle")) + "</div>" + sm.praise.map(function (x) { return "<p>" + icon("check") + "<span>" + esc(x) + "</span></p>"; }).join("") + "</div>";
+    if (sm.notes.length) h += '<div class="sum note"><div class="label">' + esc(t3("notesTitle")) + "</div>" + sm.notes.map(function (x) { return "<p>" + icon("info") + "<span>" + esc(x) + "</span></p>"; }).join("") + "</div>";
+    if (sm.compare) h += '<p class="sub small tnum" style="margin:8px 0 0">' + esc(sm.compare) + "</p>";
+    return h;
+  }
+  /** The run before [run] of the same speech or meeting. */
+  function previousRun(run) {
+    var list = runsFor(run.planId).filter(function (r) { return r.id !== run.id && r.finishedAt < run.finishedAt; });
+    return list[0] || null;
   }
 
   // --- Toast, dialogs, menus ---------------------------------------------------
@@ -358,14 +571,20 @@
     clearTimeout(toastTimer); toastTimer = setTimeout(function () { el.remove(); }, 3200);
   }
   var dialogEl = null, dialogClose = null;
-  /** opts: { title, body (html), actions: [{label, cls, onClick}], onClose, wide } */
+  /**
+   * opts: { title, body (html), actions: [{label, cls, onClick}], onClose, icon }
+   * Always has a close button (X) in the top corner, and only the body scrolls, so the X and the
+   * buttons stay in view even when the text is long (before, on a phone you had to scroll down to close).
+   */
   function dialog(opts) {
     closeDialog();
     var scrim = document.createElement("div"); scrim.className = "scrim";
     var d = document.createElement("div"); d.className = "dialog"; d.setAttribute("role", "dialog"); d.setAttribute("aria-modal", "true");
-    d.innerHTML = (opts.icon ? '<div style="text-align:center;color:var(--sub)">' + icon(opts.icon).replace("<svg", '<svg style="width:28px;height:28px"') + "</div>" : "") +
-      (opts.title ? "<h3" + (opts.icon ? ' style="text-align:center"' : "") + ">" + esc(opts.title) + "</h3>" : "") +
+    d.innerHTML = '<button class="ibtn dlg-x" data-x aria-label="' + esc(t("close")) + '" title="' + esc(t("close")) + '">' + icon("close") + "</button>" +
+      '<div class="dlg-head">' + (opts.icon ? '<div style="text-align:center;color:var(--sub)">' + icon(opts.icon).replace("<svg", '<svg style="width:28px;height:28px"') + "</div>" : "") +
+      (opts.title ? "<h3" + (opts.icon ? ' style="text-align:center"' : "") + ">" + esc(opts.title) + "</h3>" : "") + "</div>" +
       '<div class="body">' + (opts.body || "") + '</div><div class="actions"></div>';
+    d.querySelector("[data-x]").addEventListener("click", function () { closeDialog(); });
     var actions = d.querySelector(".actions");
     (opts.actions || []).forEach(function (a) {
       var b = document.createElement("button");
@@ -428,7 +647,8 @@
     if (screen !== "timer") { var c = document.querySelector("canvas.confetti"); if (c) c.remove(); }
     render(); scrollTo(0, 0);
   }
-  function backToLibrary() { ui.plan = null; ui.quick = false; go("library"); }
+  function backToLibrary() { ui.plan = null; ui.quick = false; ui.drill = null; go("library"); }
+  function openMeeting() { ui.plan = null; ui.quick = false; ui.drill = null; go("meeting"); fetchMeetings(meetingLang()); }
   function openPlan(p) { ui.quick = false; ui.plan = p; go("ready"); }
   function startEditing(plan, returnTo) {
     ui.quick = false;
@@ -442,7 +662,9 @@
     if (ui.editReturn === "ready" && orig) { ui.plan = planById(orig.id) || orig; go("ready"); } else backToLibrary();
   }
   function createNew() {
-    startEditing({ id: newId(), title: t("defaultSpeechTitle"), segments: [{ id: newId(), title: t("defaultFirstSegment"), targetSeconds: 120 }] }, "library");
+    var p = { id: newId(), title: t("defaultSpeechTitle"), segments: [{ id: newId(), title: t("defaultFirstSegment"), targetSeconds: 120 }] };
+    if (folderById(ui.folder)) p.folderId = ui.folder; // made inside a folder: it goes there
+    startEditing(p, "library");
   }
   function saveEdit() {
     var p = ui.plan;
@@ -472,7 +694,7 @@
   }
   function planToFile(p, withIds) {
     var o = {};
-    if (withIds) { o.id = p.id; if (p.createdAt) o.createdAt = p.createdAt; if (p.lastUsedAt) o.lastUsedAt = p.lastUsedAt; if (p.archived) o.archived = true; }
+    if (withIds) { o.id = p.id; if (p.createdAt) o.createdAt = p.createdAt; if (p.lastUsedAt) o.lastUsedAt = p.lastUsedAt; if (p.archived) o.archived = true; if (p.folderId) o.folderId = p.folderId; }
     o.title = p.title;
     o.segments = p.segments.map(function (s) { var x = { title: s.title, target: s.targetSeconds }; if (withIds) x.id = s.id; return x; });
     return o;
@@ -481,13 +703,14 @@
   function exportFile(p, scope) {
     var o;
     if (scope === "library" || !p) {
-      o = { app: "Speech Split", format: 1, kind: "library", speeches: data.plans.map(function (x) { return planToFile(x, true); }), history: data.runs };
+      o = { app: "Speech Split", format: 1, kind: "library", folders: data.folders.map(function (x) { return { id: x.id, name: x.name }; }),
+        speeches: data.plans.map(function (x) { return planToFile(x, true); }), history: data.runs };
       return { name: "Speech Split " + new Date().toISOString().slice(0, 10) + ".speechsplit", text: JSON.stringify(o, null, 2) + "\n" };
     }
     var withHistory = scope === "history";
     var pf = planToFile(p, withHistory);
     o = { app: "Speech Split", format: 1 };
-    Object.keys(pf).forEach(function (k) { if (k !== "createdAt" && k !== "lastUsedAt" && k !== "archived") o[k] = pf[k]; });
+    Object.keys(pf).forEach(function (k) { if (k !== "createdAt" && k !== "lastUsedAt" && k !== "archived" && k !== "folderId") o[k] = pf[k]; });
     if (withHistory) o.history = runsFor(p.id);
     return { name: speechFileName(p.title), text: JSON.stringify(o, null, 2) + "\n" };
   }
@@ -536,9 +759,11 @@
   }
   /** Any Speech Split file or export text: one speech (maybe with history) or a library backup. */
   function planFromFile(o, keepIds) {
-    return { id: keepIds && o.id ? String(o.id) : newId(), title: String(o.title || "").trim() || t("importedSpeech"),
+    var p = { id: keepIds && o.id ? String(o.id) : newId(), title: String(o.title || "").trim() || t("importedSpeech"),
       createdAt: keepIds && o.createdAt ? +o.createdAt : Date.now(), lastUsedAt: keepIds && o.lastUsedAt ? +o.lastUsedAt : 0, archived: keepIds && !!o.archived,
       segments: (o.segments || []).map(function (s) { return { id: keepIds && s.id ? String(s.id) : newId(), title: String(s.title || ""), targetSeconds: Math.max(0, parseInt(s.target, 10) || 0), _old: s.id }; }) };
+    if (keepIds && o.folderId) p.folderId = String(o.folderId);
+    return p;
   }
   function cleanRuns(list) {
     return (Array.isArray(list) ? list : []).filter(function (r) { return r && r.planId && Array.isArray(r.segments) && r.finishedAt; });
@@ -557,7 +782,8 @@
     if (!o || typeof o !== "object") return false;
     if (o.kind === "library" || Array.isArray(o.speeches)) {
       if (!Array.isArray(o.speeches) || !o.speeches.length) return false;
-      libraryDialog(o.speeches.filter(function (x) { return x && Array.isArray(x.segments); }).map(function (x) { var p = planFromFile(x, true); p.segments.forEach(function (s) { delete s._old; }); return p; }), cleanRuns(o.history));
+      var folders = (Array.isArray(o.folders) ? o.folders : []).filter(function (x) { return x && x.id && x.name; }).map(function (x) { return { id: String(x.id), name: String(x.name) }; });
+      libraryDialog(o.speeches.filter(function (x) { return x && Array.isArray(x.segments); }).map(function (x) { var p = planFromFile(x, true); p.segments.forEach(function (s) { delete s._old; }); return p; }), cleanRuns(o.history), folders);
       return "library";
     }
     if (!Array.isArray(o.segments) || !o.segments.length) return false;
@@ -574,22 +800,27 @@
     return true;
   }
   /** A library backup: add what's missing, or (after a second question) replace everything. */
-  function libraryDialog(plans, runs) {
+  function libraryDialog(plans, runs, folders) {
     var apply = function (replace) {
       closeDialog();
       var count;
+      // Meeting history isn't tied to a speech, so it travels with the library too
+      var isMeeting = function (r) { return r.planId === MIDWEEK_ID || r.planId === WEEKEND_ID; };
       if (replace) {
         data.plans = plans;
+        data.folders = folders;
         var ids = {}; plans.forEach(function (p) { ids[p.id] = 1; });
-        data.runs = capRuns(runs.filter(function (r) { return ids[r.planId]; }));
+        data.runs = capRuns(runs.filter(function (r) { return ids[r.planId] || isMeeting(r); }));
         count = plans.length;
-        ui.plan = null; ui.screen = "library";
+        ui.plan = null; ui.folder = null; ui.screen = "library";
       } else {
         var have = {}; data.plans.forEach(function (p) { have[p.id] = 1; });
         var added = plans.filter(function (p) { return !have[p.id]; });
         data.plans = data.plans.concat(added);
+        var haveF = {}; data.folders.forEach(function (x) { haveF[x.id] = 1; });
+        data.folders = data.folders.concat(folders.filter(function (x) { return !haveF[x.id]; }));
         var all = {}; data.plans.forEach(function (p) { all[p.id] = 1; });
-        data.runs = capRuns(data.runs.concat(runs.filter(function (r) { return all[r.planId]; })));
+        data.runs = capRuns(data.runs.concat(runs.filter(function (r) { return all[r.planId] || isMeeting(r); })));
         count = added.length;
       }
       save(); toast(f("importedCount")(count)); render();
@@ -601,35 +832,27 @@
         } },
         { label: t("importAdd"), onClick: function () { apply(false); } }] });
   }
+  /** Pasted text: only an exported speech or backup (documents can no longer be imported). */
   function importText(text) {
     var r = importPlanText(text);
     if (r === "library") return true;
     if (r) { toast(t("imported")); render(); return true; }
-    var blocks = IM.blocksFromPlainText(text);
-    if (!blocks.some(function (b) { return !b.heading && IM.countWords(b.text) > 0; })) return false;
-    showSuggestion({ title: IM.guessTitle(blocks, t("importedSpeech")), blocks: blocks });
-    return true;
+    return false;
   }
+  /** A .speechsplit file that was picked or dropped. */
   function importFile(file) {
-    if (ui.busy || !file) return;
-    if (file.size > 30 * 1024 * 1024) { toast(t("importUnsupported")); return; }
-    ui.busy = true; render();
-    IM.readFile(file, function () { var b = document.querySelector(".busy span"); if (b) b.textContent = t("pdfLoading"); })
-      .then(function (res) {
-        ui.busy = false; render();
-        if (!res) { toast(t("importUnsupported")); return; }
-        if (res.kind === "plan") { var r = importPlanText(res.text); if (r === true) { toast(t("imported")); render(); } else if (!r) toast(t("importFailed")); return; }
-        var blocks = res.blocks;
-        if (!blocks.some(function (b) { return !b.heading && IM.countWords(b.text) > 0; })) { toast(t("importUnreadable")); return; }
-        var fromName = (file.name || "").replace(/\.[^.]+$/, "").replace(/_/g, " ").trim();
-        showSuggestion({ title: IM.guessTitle(blocks, fromName || t("importedSpeech")), blocks: blocks });
-      })
-      .catch(function () { ui.busy = false; render(); toast(t("importUnreadable")); });
+    if (!file) return;
+    if (file.size > 20 * 1024 * 1024) { toast(t3("importOnlyFiles")); return; }
+    file.text().then(function (text) {
+      var r = importPlanText(text);
+      if (r === true) { toast(t("imported")); render(); }
+      else if (!r) toast(t3("importOnlyFiles"));
+    }, function () { toast(t3("importOnlyFiles")); });
   }
   function pickFile() {
     var input = document.createElement("input");
     input.type = "file";
-    input.accept = ".speechsplit,.pdf,.docx,.odt,.rtf,.txt,.md,.json,application/json,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain";
+    input.accept = ".speechsplit,.json,application/json,application/vnd.speechsplit+json";
     input.addEventListener("change", function () { if (input.files && input.files[0]) importFile(input.files[0]); });
     input.click();
   }
@@ -640,7 +863,7 @@
     var plan = ui.plan;
     if (!plan || !plan.segments.length) return;
     alerted = {}; ui.celebrating = false; recordedRunId = null;
-    if (!ui.quick) replacePlan(plan.id, function (p) { p.lastUsedAt = Date.now(); return p; });
+    if (!ui.quick && !plan.meeting && !plan.drill) replacePlan(plan.id, function (p) { p.lastUsedAt = Date.now(); return p; });
     eStart(plan.segments.length);
     go("timer");
     afterChange();
@@ -652,16 +875,31 @@
   }
   function isPerfect() {
     var tol = data.settings.celebrateTolerance;
+    if (ui.plan.meeting) return false; // a meeting is about ending in time, not on the second
     return isFinished() && tol >= 0 && Math.abs(totalElapsed() - totalTarget(ui.plan)) <= tol;
   }
   function next() {
-    if (eNext()) { ui.celebrating = isPerfect(); recordRun(); }
+    if (eNext()) {
+      ui.celebrating = isPerfect();
+      recordRun();
+      if (ui.plan.drill && ui.drill) ui.drill.attempts.push(totalElapsed());
+    }
     afterChange(true);
+  }
+  /** Practise one part: a single-segment run of it, again and again. Not saved in the history. */
+  function startDrill(planId, index, attempts) {
+    var base = planById(planId), seg = base && base.segments[index];
+    if (!seg) return;
+    ui.drill = { planId: planId, index: index, attempts: attempts || [] };
+    ui.plan = { id: "drill", drill: true, title: base.title + " · " + t3("drillTitle"),
+      segments: [{ id: seg.id, title: seg.title, targetSeconds: seg.targetSeconds }] };
+    ui.quick = false;
+    startTimer();
   }
   function previous() {
     if (!isActive()) return;
     ui.celebrating = false;
-    if (isFinished()) unrecordRun();
+    if (isFinished()) { unrecordRun(); if (ui.plan.drill && ui.drill) ui.drill.attempts.pop(); }
     ePrevious();
     afterChange(true);
   }
@@ -670,7 +908,14 @@
     recordRun(); recordedRunId = null;
     eStop(); ui.celebrating = false;
     afterChange();
-    if (ui.quick) backToLibrary(); else go("ready");
+    if (ui.quick) backToLibrary();
+    else if (ui.plan && ui.plan.meeting) { ui.plan = null; go("meeting"); }
+    else if (ui.plan && ui.plan.drill) {
+      var base = ui.drill && planById(ui.drill.planId);
+      ui.drill = null;
+      if (base) { ui.plan = base; go("ready"); } else backToLibrary();
+    }
+    else go("ready");
   }
   function requestStop() {
     if (isFinished()) { stopTimer(); return; }
@@ -729,6 +974,7 @@
     document.documentElement.lang = lang === "no" ? "nb" : lang;
     applyTheme();
     var s = ui.screen;
+    root.classList.toggle("fit", s === "timer");
     if (s === "library") renderLibrary();
     else if (s === "archive") renderArchive();
     else if (s === "settings") renderSettings();
@@ -736,6 +982,7 @@
     else if (s === "ready") renderReady();
     else if (s === "timer") renderTimer();
     else if (s === "history") renderHistory();
+    else if (s === "meeting") renderMeeting();
     if (ui.celebrating && s === "timer") confetti();
   }
   function tabs() {
@@ -746,29 +993,43 @@
   function isIos() { return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1); }
   function isStandalone() { return matchMedia("(display-mode: standalone)").matches || navigator.standalone === true; }
 
+  function planCard(p) {
+    return '<div class="card plan" data-a="open" data-id="' + esc(p.id) + '" tabindex="0"><div class="txt"><b>' + esc(p.title) + '</b><span class="sub small">' + esc(summaryOf(p)) +
+      '</span></div><button class="ibtn subtle" data-a="plan-menu" data-id="' + esc(p.id) + '" aria-label="' + esc(t("moreOptions")) + '">' + icon("more") + "</button></div>";
+  }
   function renderLibrary() {
-    var plans = visiblePlans(), arch = archivedPlans().length;
-    var html = '<div class="page"><div class="head"><h1>' + esc(t("libraryTitle")) + "</h1>" +
-      '<button class="ibtn" data-a="sort" title="' + esc(t("sortTitle")) + '" aria-label="' + esc(t("sortTitle")) + '">' + icon("sort") + "</button>" +
-      '<button class="ibtn" data-a="export-library" title="' + esc(t("exportLibrary")) + '" aria-label="' + esc(t("exportLibrary")) + '">' + icon("upload") + "</button>" +
-      '<button class="ibtn" data-a="import" title="' + esc(t("importLabel")) + '" aria-label="' + esc(t("importLabel")) + '">' + icon("download") + "</button></div>";
-    if (!isStandalone() && !data.settings.installHintHidden) {
+    var folder = folderById(ui.folder);
+    if (!folder) ui.folder = null;
+    var plans = plansIn(ui.folder), arch = archivedPlans().length;
+    var btn = function (a, ic, label) { return '<button class="ibtn" data-a="' + a + '" title="' + esc(label) + '" aria-label="' + esc(label) + '">' + icon(ic) + "</button>"; };
+    var html = '<div class="page"><div class="head">';
+    if (folder) {
+      html += '<button class="ibtn" data-a="folder-back" aria-label="' + esc(t("back")) + '">' + icon("back") + "</button><h1>" + esc(folder.name) + "</h1>" +
+        btn("sort", "sort", t("sortTitle")) + btn("folder-menu", "more", t("moreOptions")) + "</div>";
+    } else {
+      html += "<h1>" + esc(t("libraryTitle")) + "</h1>" + btn("sort", "sort", t("sortTitle")) + btn("new-folder", "newFolder", t3("newFolder")) +
+        btn("export-library", "upload", t("exportLibrary")) + btn("import", "download", t("importLabel")) + "</div>";
+    }
+    if (!folder && !isStandalone() && !data.settings.installHintHidden) {
       html += '<div class="banner">' + icon("install") + "<div><b>" + esc(t("installTitle")) + "</b><br>" + esc(isIos() ? t("installIos") : t("installOther")) +
         '</div><button class="ibtn x" data-a="hide-install" aria-label="' + esc(t("close")) + '">' + icon("close") + "</button></div>";
     }
-    if (ui.busy) html += '<div class="busy"><div class="spin"></div><span>' + esc(t("importReading")) + "</span></div>";
     html += '<div class="list">';
-    if (!plans.length) {
-      html += '<p class="empty">' + esc(t("noSpeeches")) + '</p><p class="empty small">' + esc(t("dropHint")) + "</p>";
-    } else {
-      plans.forEach(function (p) {
-        html += '<div class="card plan" data-a="open" data-id="' + esc(p.id) + '" tabindex="0"><div class="txt"><b>' + esc(p.title) + '</b><span class="sub small">' + esc(summaryOf(p)) +
-          '</span></div><button class="ibtn subtle" data-a="plan-menu" data-id="' + esc(p.id) + '" aria-label="' + esc(t("moreOptions")) + '">' + icon("more") + "</button></div>";
+    if (!folder) {
+      sortedFolders().forEach(function (f) {
+        var n = plansIn(f.id).length;
+        html += '<div class="card plan folder" data-a="open-folder" data-id="' + esc(f.id) + '" tabindex="0">' + icon("folder") + '<div class="txt"><b>' + esc(f.name) + '</b><span class="sub small">' + esc(t3("folderCount")(n)) +
+          "</span></div>" + icon("chev").replace("<svg", '<svg class="chev"') + "</div>";
       });
     }
-    if (arch) html += '<button class="tbtn sub" data-a="archive">' + icon("inventory") + " " + esc(f("archiveCount")(arch)) + "</button>";
+    if (!plans.length) {
+      if (folder) html += '<p class="empty">' + esc(t3("folderEmpty")) + "</p>";
+      else if (!data.folders.length) html += '<p class="empty">' + esc(t("noSpeeches")) + '</p><p class="empty small">' + esc(t3("importDropFile")) + "</p>";
+    } else plans.forEach(function (p) { html += planCard(p); });
+    if (arch && !folder) html += '<button class="tbtn sub" data-a="archive">' + icon("inventory") + " " + esc(f("archiveCount")(arch)) + "</button>";
     html += '</div><div class="stack"><button class="btn big block" data-a="new">' + icon("add") + esc(t("createNewSpeech")) + "</button>" +
-      '<button class="btn outline block" data-a="quick">' + icon("timer") + esc(t("quickTimer")) + "</button></div></div>" + tabs();
+      '<div class="pair"><button class="btn outline" data-a="quick">' + icon("timer") + esc(t("quickTimer")) + "</button>" +
+      '<button class="btn outline" data-a="meeting">' + icon("groups") + esc(t3("meetingMode")) + "</button></div></div></div>" + tabs();
     root.innerHTML = html;
   }
 
@@ -818,7 +1079,7 @@
     html += '<div class="section"><div class="label">' + esc(t("keyboardTitle")) + '</div><div class="card"><p class="sub small" style="margin:0;white-space:pre-line">' + esc(t("keyboardDescWeb")) + "</p></div></div>";
     html += '<div class="section"><div class="label">' + esc(t("aboutTitle")) + '</div><div class="card"><b>Speech Split</b><div class="sub small">' + esc(f("version")(APP_VERSION) + " · " + t("webVersion")) + "</div>" +
       '<p class="sub small">' + esc(t("storageNote")) + "</p>" +
-      linkRow("notes", "notes", t("patchNotes")) + linkRow("feedback", "feedback", t("feedback")) +
+      linkRow("whats-new", "sparkle", t("whatsNew")) + linkRow("notes", "notes", t("patchNotes")) + linkRow("tutorial", "school", t3("tutorialShow")) + linkRow("feedback", "feedback", t("feedback")) +
       linkRow("", "web", t("website"), true, SITE) + linkRow("", "code", t("viewOnGitHub"), true, RELEASES) + linkRow("", "shield", t("privacy"), true, SITE + "privacy.html") +
       '<p class="sub small" style="margin:10px 0 0">' + esc(t("madeBy")) + "</p></div></div>";
     root.innerHTML = html + '<div style="height:24px"></div></div>' + tabs();
@@ -842,14 +1103,69 @@
     root.innerHTML = html;
   }
 
+  /** Two or more buttons that work as one choice. [opts]: [[value, label], ...] */
+  function segmented(action, opts, value) {
+    return '<div class="segmented" role="radiogroup">' + opts.map(function (o) {
+      return '<button role="radio" aria-checked="' + (o[0] === value) + '" class="' + (o[0] === value ? "on" : "") + '" data-a="' + action + '" data-v="' + esc(o[0]) + '">' + esc(o[1]) + "</button>";
+    }).join("") + "</div>";
+  }
   function renderReady() {
     var p = ui.plan; if (!p) return backToLibrary();
     var runs = runsFor(p.id).length;
     root.innerHTML = '<div class="ready"><div class="label" style="letter-spacing:.15em">' + esc(t("readyToSpeak")) + "</div><h1>" + esc(p.title) + '</h1><div class="sub">' + esc(summaryOf(p)) + "</div>" +
+      '<div class="mode">' + segmented("run-mode", [["practice", t3("modePractice")], ["live", t3("modeLive")]], data.settings.runMode === "live" ? "live" : "practice") +
+      '<p class="sub small">' + esc(t3("modeDesc")) + "</p></div>" +
       '<button class="btn start" data-a="start" ' + (p.segments.length ? "" : "disabled") + ">" + icon("play") + esc(t("startTimer")) + "</button>" +
       '<div class="links"><button class="tbtn sub" data-a="edit-active">' + esc(t("edit")) + '</button><button class="tbtn sub" data-a="history">' + esc(runs ? t("history") + " (" + runs + ")" : t("history")) +
-      '</button><button class="tbtn sub" data-a="export-active">' + esc(t("export")) +
+      '</button>' + (p.segments.length > 1 ? '<button class="tbtn sub" data-a="drill">' + esc(t3("drillTitle")) + "</button>" : "") +
+      '<button class="tbtn sub" data-a="export-active">' + esc(t("export")) +
       '</button><button class="tbtn sub" data-a="back-library">' + esc(t("library")) + "</button></div></div>";
+  }
+  function drillDialog() {
+    var p = ui.plan; if (!p) return;
+    var d = dialog({ title: t3("drillTitle"), noFocus: true,
+      body: '<p class="sub small" style="margin-top:0">' + esc(t3("drillPick")) + "</p>" + p.segments.map(function (s, i) {
+        return '<button class="choice" data-i="' + i + '"><span style="flex:1"><b>' + esc(s.title) + '</b></span><span class="tnum sub">' + fmt(s.targetSeconds) + "</span></button>";
+      }).join(""),
+      actions: [{ label: t("cancel"), cls: "tbtn" }] });
+    d.querySelectorAll("[data-i]").forEach(function (b) { b.onclick = function () { closeDialog(); startDrill(p.id, +b.dataset.i); }; });
+  }
+
+  // Meeting mode: pick the meeting (and the week), see the program, start
+  function renderMeeting() {
+    var st = data.settings, l = meetingLang(), kind = st.meetingKind === "weekend" ? "weekend" : "midweek";
+    var plan = chosenMeeting(), state = meetState[l], have = !!meetingData(l);
+    var html = '<div class="page"><div class="head"><button class="ibtn" data-a="back-library" aria-label="' + esc(t("back")) + '">' + icon("back") + "</button><h2>" + esc(t3("meetingMode")) + "</h2></div>" +
+      '<p class="sub small" style="margin:-8px 0 14px">' + esc(t3("meetingIntro")) + "</p>" +
+      segmented("meeting-kind", [["midweek", t3("meetingMidweek")], ["weekend", t3("meetingWeekend")]], kind);
+    if (kind === "midweek") {
+      var start = mondayIso(ui.weekOffset), w = weekFor(l, start);
+      html += '<div class="card weeknav"><button class="ibtn" data-a="week-prev" aria-label="' + esc(t3("meetingPrevWeek")) + '">' + icon("left") + "</button>" +
+        "<div><b>" + esc(weekLabel(start, lang)) + '</b><div class="sub small">' + esc((w && w.reading ? w.reading + " · " : "") + (ui.weekOffset === 0 ? t3("meetingThisWeek") : "")) +
+        (ui.weekOffset !== 0 ? '<button class="linkish" data-a="week-now">' + esc(t3("meetingThisWeek")) + "</button>" : "") + "</div></div>" +
+        '<button class="ibtn" data-a="week-next" aria-label="' + esc(t3("meetingNextWeek")) + '">' + icon("chev") + "</button></div>";
+      if (state === "loading" && !have) html += '<div class="busy"><div class="spin"></div><span>' + esc(t3("meetingLoading")) + "</span></div>";
+      else if (state === "missing" && !have) html += '<p class="empty">' + esc(t3("meetingNoLanguage")) + "</p>";
+      else if (state === "failed" && !have) html += '<p class="empty">' + esc(t3("meetingNoData")) + '</p><button class="btn outline" data-a="meeting-retry">' + esc(t3("meetingRetry")) + "</button>";
+      else if (!plan) html += '<p class="empty">' + esc(t3("meetingNoWeek")) + "</p>";
+      if (state === "failed" && have) html += '<p class="sub small">' + esc(t3("meetingOffline")) + "</p>";
+    } else {
+      html += '<p class="sub small" style="margin:12px 2px">' + esc(t3("meetingWeekendNote")) + "</p>";
+    }
+    if (plan) {
+      html += '<div class="card program">' + plan.segments.map(function (s) {
+        return '<div class="prow"><span>' + esc(s.title) + '</span><b class="tnum">' + fmt(s.targetSeconds) + "</b></div>";
+      }).join("") + '<div class="prow total"><span>' + esc(plan.meeting.buffer ? t3("meetingTotal")(fmt(totalTarget(plan)), fmt(plan.meeting.buffer)) : t("reportTotal")) +
+        '</span><b class="tnum">' + fmt(planTarget(plan)) + "</b></div></div>";
+    }
+    var runs = runsFor(kind === "weekend" ? WEEKEND_ID : MIDWEEK_ID).length;
+    html += '<span style="flex:1"></span><div class="stack"><button class="btn big block" data-a="meeting-start" ' + (plan ? "" : "disabled") + ">" + icon("play") + esc(t3("meetingStart")) + "</button>" +
+      '<div class="links" style="justify-content:center"><button class="tbtn sub" data-a="meeting-history">' + esc(runs ? t("history") + " (" + runs + ")" : t("history")) + "</button></div></div>";
+    if (kind === "midweek") {
+      html += '<div class="section" style="margin-top:8px"><div class="label">' + esc(t3("meetingLanguage")) + "</div>" +
+        segmented("meeting-lang", [["no", "Norsk"], ["en", "English"], ["de", "Deutsch"]], l) + "</div>";
+    }
+    root.innerHTML = html + "</div>" + tabs();
   }
 
   // Timer: built once per change, then only the numbers are updated every tick
@@ -872,21 +1188,23 @@
       html = '<div class="timer"><div class="t-top"><span class="title">' + esc(p.title) + "</span>" +
         (fin ? "" : '<button class="ibtn subtle" data-a="lectern" aria-label="' + esc(t("lecternOn")) + '" title="' + esc(t("lecternOn")) + '">' + icon("full") + "</button>") +
         '<button class="ibtn subtle" data-a="stop" aria-label="' + esc(t("stopTimer")) + '">' + icon("close") + "</button></div>" +
-        '<div class="t-total"><div><div class="label" style="font-size:10px">' + esc(f("totalPlan")(fmt(totalTarget(p)))) + '</div><div class="big tnum" id="t-total"></div></div>' +
-        '<div style="text-align:right;padding-bottom:6px"><div class="label" style="font-size:10px;margin-bottom:4px">' + esc(t("aheadBehind")) + '</div><span class="pill tnum" id="t-diff"></span></div></div>';
+        '<div class="t-total"><div><div class="label" style="font-size:10px">' + esc(f("totalPlan")(fmt(planTarget(p)))) + '</div><div class="big tnum" id="t-total"></div></div>' +
+        '<div style="text-align:right;padding-bottom:6px"><div class="label" style="font-size:10px;margin-bottom:4px">' + esc(t("aheadBehind")) + '</div><span class="pill tnum" id="t-diff"></span></div></div>' +
+        (bufferOf(p) && !fin ? '<div class="bufline" id="t-buffer"></div>' : "");
       if (!fin) {
         html += '<div class="t-seg"><div class="row"><span class="label" style="font-size:10px">' + esc(f("nowOf")(idx + 1, segs.length)) + '</span><span class="label" style="font-size:10px">' + esc(t("target") + "  " + fmt(segs[idx].targetSeconds)) + "</span></div>" +
           "<h3>" + esc(segs[idx].title) + '</h3><div class="label" style="font-size:10px" id="t-clocklabel"></div><div class="clock tnum" id="t-clock"></div>' +
           (idx > 0 && data.settings.showAdjusted ? '<div class="adj" id="t-adj"><div style="flex:1"><div class="l" id="t-adjlabel"></div><div class="v tnum" id="t-adjv"></div></div><div style="text-align:right"><div class="label" style="font-size:10px;margin-bottom:4px">' + esc(t("banked")) + '</div><span class="pill tnum" id="t-banked"></span></div></div>' : "") + "</div>";
-      } else {
-        var diff = totalElapsed() - totalTarget(p), perfect = isPerfect();
-        html += '<div class="finished"><div class="ic">' + (perfect ? "🏆" : "🏁") + "</div><h3>" + esc(perfect ? t("perfectTiming") : t("finished")) + '</h3><div class="sub">' +
-          esc(diff > 0 ? f("overPlan")(fmt(diff)) : diff < 0 ? f("underPlan")(fmt(-diff)) : t("onTime")) + '</div><button class="tbtn" data-a="share-report" style="margin-top:8px">' + icon("share") + " " + esc(t("shareReport")) + "</button></div>";
-      }
+      } else html += finishedPanel(p);
       html += '<div class="t-list full">';
+      var elNow = fin ? allElapsed() : null;
       segs.forEach(function (s, i) {
         var cls = i === idx ? "t-li cur" : "t-li";
-        html += '<div class="' + cls + '" id="li-' + i + '">' + icon(i < idx ? "check" : i === idx ? "play" : "circle") + '<span class="n">' + esc(s.title) + '</span><span class="pill tnum' + (i <= idx && !fin || i < idx ? "" : " hidden") + '" id="lp-' + i + '"></span><span class="tnum" style="font-weight:700;font-size:14px">' + fmt(s.targetSeconds) + "</span></div>";
+        // Finished: a word per part (on time, a bit over...) next to the numbers
+        var v = fin ? verdict(elNow[i] - s.targetSeconds, s.targetSeconds) : null;
+        html += '<div class="' + cls + '" id="li-' + i + '">' + icon(i < idx ? "check" : i === idx ? "play" : "circle") + '<span class="n">' + esc(s.title) + "</span>" +
+          (v ? '<span class="verdict v-' + v + '">' + esc(t3(VERDICT_KEY[v])) + "</span>" : "") +
+          '<span class="pill tnum' + (i <= idx && !fin || i < idx ? "" : " hidden") + '" id="lp-' + i + '"></span><span class="tnum" style="font-weight:700;font-size:14px">' + fmt(s.targetSeconds) + "</span></div>";
       });
       html += "</div>";
       var nx = segs[idx + 1];
@@ -897,6 +1215,25 @@
     updateTimer();
     var cur = document.getElementById("li-" + idx);
     if (cur && cur.scrollIntoView) cur.scrollIntoView({ block: "nearest" });
+  }
+  /** After the last part: the result, a summary (or the attempts, when practising one part), share. */
+  function finishedPanel(p) {
+    var perfect = isPerfect(), h = '<div class="finished">';
+    if (p.drill && ui.drill) {
+      var target = p.segments[0].targetSeconds, at = ui.drill.attempts;
+      h += '<div class="ic">🎯</div><h3>' + esc(p.segments[0].title) + '</h3><div class="label" style="margin-top:12px">' + esc(t3("drillAttempts")) + '</div><div class="attempts">' +
+        at.map(function (sec, i) { var d = sec - target; return '<div><span>' + esc(t3("drillAttempt")(i + 1)) + '</span><span class="tnum">' + fmt(sec) + '</span><span class="pill tnum' + (d > 0 ? " over" : "") + '">' + fmtDiff(d) + "</span></div>"; }).reverse().join("") +
+        '</div><button class="btn outline" data-a="drill-again" style="margin-top:12px">' + icon("replay") + esc(t3("drillAgain")) + "</button></div>";
+      return h;
+    }
+    var run = snapshot(), recorded = recordedRunId && data.runs.filter(function (r) { return r.id === recordedRunId; })[0];
+    if (recorded) run = recorded;
+    var diff = runDiff(run), sm = buildSummary(run, previousRun(run));
+    h += '<div class="ic">' + (perfect ? "🏆" : "🏁") + "</div><h3>" + esc(perfect ? t("perfectTiming") : t("finished")) + '</h3><div class="sub">' +
+      esc(sm.meetingLine || (diff > 0 ? f("overPlan")(fmt(diff)) : diff < 0 ? f("underPlan")(fmt(-diff)) : t("onTime"))) + "</div>" +
+      '<div class="sumbox">' + summaryHtml(sm) + "</div>" +
+      '<button class="tbtn" data-a="share-report" style="margin-top:8px">' + icon("share") + " " + esc(t("shareReport")) + "</button></div>";
+    return h;
   }
   function setPill(el, d, warn) { if (!el) return; el.textContent = fmtDiff(d); el.className = "pill tnum" + (d > 0 ? " over" : warn ? " warn" : ""); }
   function updateTimer() {
@@ -921,6 +1258,12 @@
     if (!$("t-total")) return;
     $("t-total").textContent = fmt(tot);
     setPill($("t-diff"), schedule);
+    if ($("t-buffer")) {
+      // The meeting's spare minutes shrink as soon as the program runs late
+      var left = bufferOf(p) - Math.max(0, schedule);
+      $("t-buffer").textContent = left >= 0 ? t3("bufferLeft")(fmt(left)) : t3("bufferUsed")(fmt(-left));
+      $("t-buffer").className = "bufline" + (left < 0 ? " over" : left < bufferOf(p) ? " used" : "");
+    }
     if (cur && !fin) {
       var remaining = cur.targetSeconds - el[idx], s2 = status(remaining, cur.targetSeconds, st.warningPercent), over = s2 === "over";
       if (st.clockMode === "REMAINING") {
@@ -957,31 +1300,50 @@
 
   function renderHistory() {
     var p = ui.plan; if (!p) return backToLibrary();
-    var runs = runsFor(p.id), st = planStats(p, runs, data.settings.celebrateTolerance);
-    var html = '<div class="page"><div class="head"><button class="ibtn" data-a="close-history" aria-label="' + esc(t("back")) + '">' + icon("back") + '</button><div style="flex:1;min-width:0"><h2>' + esc(t("historyTitle")) + '</h2><div class="sub small">' + esc(p.title) + "</div></div></div>";
-    if (!runs.length) { root.innerHTML = html + '<p class="empty">' + esc(t("noHistory")) + "</p></div>"; return; }
+    var meeting = !!p.meeting, all = runsFor(p.id);
+    var hasLive = all.some(function (r) { return r.live; }), hasPractice = all.some(function (r) { return !r.live; });
+    var filter = meeting || !(hasLive && hasPractice) ? "all" : ui.historyFilter;
+    var runs = all.filter(function (r) { return filter === "all" || (filter === "live") === !!r.live; });
+    var st = planStats(p, runs, data.settings.celebrateTolerance);
+    // A meeting is "on target" when it ended in time
+    if (meeting) st.onTarget = runs.filter(function (r) { return runDiff(r) <= 0; }).length;
+    var html = '<div class="page"><div class="head"><button class="ibtn" data-a="close-history" aria-label="' + esc(t("back")) + '">' + icon("back") + '</button><div style="flex:1;min-width:0"><h2>' +
+      esc(meeting ? t3("meetingHistoryTitle") : t("historyTitle")) + '</h2><div class="sub small">' + esc(meeting ? (p.meeting.kind === "weekend" ? t3("meetingWeekendTitle") : t3("meetingMidweek")) : p.title) + "</div></div></div>";
+    if (!all.length) { root.innerHTML = html + '<p class="empty">' + esc(t("noHistory")) + "</p></div>"; return; }
+    if (filter !== "all" || (hasLive && hasPractice && !meeting)) {
+      html += '<div style="margin-bottom:12px">' + segmented("history-filter", [["all", t3("filterAll")], ["practice", t3("modePractice")], ["live", t3("modeLive")]], filter) + "</div>";
+    }
     var pill = function (d) { return '<span class="pill tnum' + (d > 0 ? " over" : "") + '">' + fmtDiff(d) + "</span>"; };
     html += '<div class="stats"><div class="card stat"><div class="label">' + esc(t("statRuns")) + '</div><div class="v">' + st.runCount + '</div></div><div class="card stat"><div class="label">' + esc(t("statOnTarget")) + '</div><div class="v">' + st.onTarget + "</div></div>" +
-      '<div class="card stat"><div class="label">' + esc(f("statAverage")(Math.min(RECENT, runs.length))) + '</div><div style="margin-top:8px">' + pill(st.avgDiff) + "</div></div>" +
+      '<div class="card stat"><div class="label">' + esc(f("statAverage")(Math.min(RECENT, runs.length))) + '</div><div style="margin-top:8px">' + (runs.length ? pill(st.avgDiff) : "") + "</div></div>" +
       '<div class="card stat"><div class="label">' + esc(t("statBest")) + '</div><div style="margin-top:8px">' + (st.best ? pill(runDiff(st.best)) : "") + "</div></div></div>";
-    // Trend: last runs as bars around the plan line (up = over, down = under)
-    var last = runs.slice(0, 12).reverse(), maxAbs = Math.max(10, Math.max.apply(null, last.map(function (r) { return Math.abs(runDiff(r)); })));
-    html += '<div class="section"><div class="label">' + esc(t("trendTitle")) + '</div><div class="card bars">' + last.map(function (r) {
-      var d = runDiff(r), h = Math.max(3, Math.abs(d) / maxAbs * 45);
-      return '<i title="' + fmtDiff(d) + '" style="height:' + h + "%;background:" + (d > 0 ? "var(--red)" : "var(--green)") + ";align-self:" + (d > 0 ? "flex-start;margin-top:" + (50 - h) + "%" : "flex-end;margin-bottom:" + (50 - h) + "%") + '"></i>';
-    }).join("") + "</div></div>";
-    if (st.segments.some(function (x) { return x.suggested != null; })) {
+    if (runs.length >= 2) {
+      // Trend: last runs as bars around the plan line (up = over, down = under)
+      var last = runs.slice(0, 12).reverse(), maxAbs = Math.max(10, Math.max.apply(null, last.map(function (r) { return Math.abs(runDiff(r)); })));
+      html += '<div class="section"><div class="label">' + esc(t("trendTitle")) + '</div><div class="card bars">' + last.map(function (r) {
+        var d = runDiff(r), h = Math.max(3, Math.abs(d) / maxAbs * 45);
+        // Up from the middle line when over, down when under
+        return '<span><i title="' + fmtDiff(d) + '" style="height:' + h + "%;background:" + (d > 0 ? "var(--red)" : "var(--green)") + ";" + (d > 0 ? "bottom:50%" : "top:50%") + '"></i></span>';
+      }).join("") + "</div></div>";
+    }
+    // A meeting's times come from the workbook, so there are no suggestions to change them
+    if (!meeting && st.segments.some(function (x) { return x.suggested != null; })) {
       html += '<div class="section"><div class="label">' + esc(t("suggestionsTitle")) + '</div><div class="card" style="padding:14px">' + st.segments.filter(function (x) { return x.suggested != null; }).map(function (x) {
         return "<p style='margin:0 0 10px'><b>" + esc(x.seg.title) + "</b><br><span class='sub small'>" + esc((x.avg > 0 ? f("suggestOver") : f("suggestUnder"))(fmt(x.seg.targetSeconds + x.avg), fmt(x.suggested))) + "</span></p>";
       }).join("") + '<p class="sub small" style="margin:0">' + esc(t("suggestionsNote")) + "</p></div></div>";
     }
-    html += '<div class="section"><div class="label">' + esc(t("segmentAveragesTitle")) + '</div><div class="card">' + st.segments.map(function (x) {
-      return '<div class="runrow" style="cursor:default"><span class="d">' + esc(x.seg.title) + '</span><span class="sub small tnum">' + fmt(x.seg.targetSeconds) + "</span>" + (x.runs ? pill(x.avg) : "") + "</div>";
-    }).join("") + "</div></div>";
+    // The midweek parts change every week, so averages per part only make sense for speeches and the weekend meeting
+    if (!meeting || p.meeting.kind === "weekend") {
+      html += '<div class="section"><div class="label">' + esc(t("segmentAveragesTitle")) + '</div><div class="card">' + st.segments.map(function (x) {
+        return '<div class="runrow" style="cursor:default"><span class="d">' + esc(x.seg.title) + '</span><span class="sub small tnum">' + fmt(x.seg.targetSeconds) + "</span>" + (x.runs ? pill(x.avg) : "") + "</div>";
+      }).join("") + "</div></div>";
+    }
     html += '<div class="section"><div class="label">' + esc(t("runsTitle")) + '</div><div class="card">' + runs.map(function (r) {
       var open = ui.expandedRun === r.id;
-      return '<div class="runrow" data-a="toggle-run" data-id="' + esc(r.id) + '"><span class="d">' + esc(fmtDate(r.finishedAt)) + '<br><span class="sub small tnum">' + fmt(runTotal(r, "actual")) + "</span></span>" + pill(runDiff(r)) + "</div>" +
-        (open ? '<div class="rundetail">' + r.segments.map(function (s) { return "<div><span>" + esc(s.title) + '</span><span class="tnum">' + fmt(s.actual) + '</span><span class="tnum sub">' + fmtDiff(s.actual - s.target) + "</span></div>"; }).join("") +
+      var name = meeting && r.planTitle ? '<br><span class="sub small">' + esc(r.planTitle) + "</span>" : "";
+      return '<div class="runrow" data-a="toggle-run" data-id="' + esc(r.id) + '"><span class="d">' + esc(fmtDate(r.finishedAt)) + (r.live && !meeting ? ' <span class="tag">' + esc(t3("liveBadge")) + "</span>" : "") +
+        name + '<br><span class="sub small tnum">' + fmt(runTotal(r, "actual")) + "</span></span>" + pill(runDiff(r)) + "</div>" +
+        (open ? '<div class="rundetail"><div class="sumbox">' + summaryHtml(buildSummary(r, previousRun(r))) + "</div>" + r.segments.map(function (x) { return "<div><span>" + esc(x.title) + '</span><span class="tnum">' + fmt(x.actual) + '</span><span class="tnum sub">' + fmtDiff(x.actual - x.target) + "</span></div>"; }).join("") +
           '<div style="justify-content:flex-end"><button class="tbtn sub" data-a="delete-run" data-id="' + esc(r.id) + '">' + esc(t("deleteRun")) + '</button><button class="tbtn" data-a="share-run" data-id="' + esc(r.id) + '">' + esc(t("shareReport")) + "</button></div></div>" : "");
     }).join("") + '</div><button class="tbtn sub" data-a="clear-history" style="margin-top:10px">' + esc(t("clearHistory")) + "</button></div>";
     root.innerHTML = html + "</div>";
@@ -990,81 +1352,22 @@
   // --- Dialogs ---------------------------------------------------------------------
   function importChoice() {
     var d = dialog({ title: t("importTitle"), noFocus: true,
-      body: '<button class="choice" id="c-file">' + icon("doc") + "<span><b>" + esc(t("importFromFile")) + '</b><br><span class="sub small">' + esc(t("importFromFileDesc")) + "</span></span></button>" +
-        '<button class="choice" id="c-paste">' + icon("paste") + "<span><b>" + esc(t("importPaste")) + '</b><br><span class="sub small">' + esc(t("importPasteDesc")) + "</span></span></button>" +
-        '<p class="sub small" style="margin:12px 0 0">' + esc(t("dropHint")) + "</p>",
+      body: '<button class="choice" id="c-file">' + icon("doc") + "<span><b>" + esc(t("importFromFile")) + '</b><br><span class="sub small">' + esc(t3("importFileDesc")) + "</span></span></button>" +
+        '<button class="choice" id="c-paste">' + icon("paste") + "<span><b>" + esc(t("importPaste")) + '</b><br><span class="sub small">' + esc(t3("importPasteOnly")) + "</span></span></button>" +
+        '<p class="sub small" style="margin:12px 0 0">' + esc(t3("importDropFile")) + "</p>",
       actions: [{ label: t("cancel"), cls: "tbtn" }] });
     d.querySelector("#c-file").onclick = function () { closeDialog(); pickFile(); };
     d.querySelector("#c-paste").onclick = function () { closeDialog(); pasteDialog(); };
   }
   function pasteDialog() {
-    var d = dialog({ title: t("importTitle"), body: '<label class="field"><span>' + esc(t("importHint")) + '</span><textarea id="paste"></textarea></label>',
+    var d = dialog({ title: t("importTitle"), body: '<label class="field"><span>' + esc(t3("importPasteHint")) + '</span><textarea id="paste"></textarea></label>',
       actions: [{ label: t("cancel"), cls: "tbtn" }, { label: t("importLabel"), id: "paste-ok", onClick: function () {
         var text = document.getElementById("paste").value;
         if (!text.trim()) return;
         closeDialog();
-        if (!importText(text)) toast(t("importNothing"));
+        if (!importText(text)) toast(t3("importPasteOnly"));
       } }] });
     return d;
-  }
-  function showSuggestion(draft) {
-    var state = { title: draft.title, pace: data.settings.wordsPerMinute, useTotal: false, parts: 0, totalText: "" };
-    var words = IM.totalWords(draft.blocks);
-    var paceSec = Math.max(60, roundTo5(Math.round(words * 60 / state.pace)));
-    state.totalText = timeForInput(paceSec - paceSec % 60);
-    var d = dialog({ icon: "sparkle", title: t("suggestTitle"), body: '<div id="sg"></div>', noFocus: true,
-      actions: [{ label: t("cancel"), cls: "tbtn" }, { label: t("continueLabel"), id: "sg-ok", onClick: accept }] });
-    var result;
-    function compute() {
-      var total = state.useTotal ? (parseTime(state.totalText) || null) : null;
-      result = IM.suggestSegments(draft.blocks, state.pace, total, state.parts || null, t("defaultFirstSegment"), f("part"));
-    }
-    function draw() {
-      compute();
-      var paces = PACE_OPTIONS.concat([state.pace]).filter(function (v, i, a) { return a.indexOf(v) === i; }).sort(function (a, b) { return a - b; });
-      var html = '<label class="field" style="margin-top:0"><span>' + esc(t("speechTitleLabel")) + '</span><input id="sg-title" value="' + esc(state.title) + '"></label>' +
-        '<p class="sub small">' + esc((result.fromHeadings ? t("suggestFromHeadings") : t("suggestEvenly")) + " " + t("suggestEditNote")) + "</p>" +
-        '<div class="label" style="margin:14px 0 6px">' + esc(t("timesFrom")) + '</div><div class="chips"><button class="chip' + (!state.useTotal ? " on" : "") + '" data-sg="mode" data-v="0">' + esc(t("timesFromPace")) +
-        '</button><button class="chip' + (state.useTotal ? " on" : "") + '" data-sg="mode" data-v="1">' + esc(t("timesFromTotal")) + "</button></div>";
-      if (state.useTotal) {
-        html += '<label class="field"><span>' + esc(t("timeLabel")) + '</span><input id="sg-total" inputmode="decimal" value="' + esc(state.totalText) + '"></label><p class="sub small" id="sg-eq">= ' + fmt(parseTime(state.totalText)) + "</p>";
-      } else {
-        html += '<div class="chips" style="margin-top:8px">' + paces.map(function (v) { return '<button class="chip' + (v === state.pace ? " on" : "") + '" data-sg="pace" data-v="' + v + '">' + esc(f("pace")(v)) + "</button>"; }).join("") +
-          '</div><p class="sub small" style="margin:6px 0 0">' + esc(t("paceNote")) + "</p>";
-      }
-      if (!result.fromHeadings) {
-        html += '<div class="label" style="margin:14px 0 6px">' + esc(t("partsTitle")) + '</div><div class="chips">' + [0, 2, 3, 4, 5, 6, 8].map(function (v) {
-          return '<button class="chip' + (v === state.parts ? " on" : "") + '" data-sg="parts" data-v="' + v + '">' + esc(v === 0 ? t("partsAuto") : String(v)) + "</button>"; }).join("") + "</div>";
-      }
-      html += '<div id="sg-list" style="margin-top:14px;border-top:1px solid var(--line)"></div>';
-      d.querySelector("#sg").innerHTML = html;
-      drawList();
-      var ti = d.querySelector("#sg-title"); ti.oninput = function () { state.title = ti.value; };
-      var to = d.querySelector("#sg-total");
-      if (to) to.oninput = function () { state.totalText = to.value; d.querySelector("#sg-eq").textContent = "= " + fmt(parseTime(to.value)); compute(); drawList(); };
-    }
-    function drawList() {
-      d.querySelector("#sg-list").innerHTML = result.segments.map(function (s, i) {
-        return '<div class="sugg"><span class="n">' + (i + 1) + '.</span><span class="t"><b>' + esc(s.title) + '</b><span class="sub small">' + esc(f("words")(s.words)) + '</span></span><b class="tnum">' + fmt(s.seconds) + "</b></div>";
-      }).join("") + '<div class="sugg" style="border:0"><b style="flex:1">' + esc(t("reportTotal")) + '</b><span class="sub small">' + esc(f("words")(sum(result.segments.map(function (s) { return s.words; })))) + '</span><b class="tnum">' + fmt(result.total) + "</b></div>";
-      d.querySelector("#sg-ok") && (document.getElementById("sg-ok").disabled = !result.segments.length);
-    }
-    d.querySelector("#sg").addEventListener("click", function (e) {
-      var b = e.target.closest("[data-sg]"); if (!b) return;
-      var v = parseInt(b.dataset.v, 10);
-      if (b.dataset.sg === "mode") state.useTotal = v === 1;
-      else if (b.dataset.sg === "pace") state.pace = v;
-      else state.parts = v;
-      draw();
-    });
-    function accept() {
-      if (!result.segments.length) return;
-      closeDialog();
-      if (state.pace !== data.settings.wordsPerMinute) { data.settings.wordsPerMinute = state.pace; save(); }
-      startEditing({ id: newId(), title: state.title.trim() || t("importedSpeech"),
-        segments: result.segments.map(function (s) { return { id: newId(), title: s.title, targetSeconds: s.seconds }; }) }, "library");
-    }
-    draw();
   }
   function quickDialog() {
     var minutes = 20;
@@ -1127,6 +1430,51 @@
       };
     });
   }
+  // --- Introduction (first start) and "what's new" (first start of a new version) ----------
+  var TUTORIAL = [["timer", "tut1"], ["next", "tut2"], ["school", "tut3"], ["groups", "tut4"], ["folder", "tut5"]];
+  function tutorial() {
+    var i = 0;
+    var d = dialog({ noFocus: true,
+      body: '<div class="tut" id="tut">' + TUTORIAL.map(function (c) {
+        return '<section><div class="tut-ic">' + icon(c[0]) + "</div><h3>" + esc(t3(c[1] + "Title")) + "</h3><p>" + esc(t3(c[1] + "Text")) + "</p></section>";
+      }).join("") + '</div><div class="dots">' + TUTORIAL.map(function (_, k) { return '<i data-dot="' + k + '"></i>'; }).join("") + "</div>",
+      actions: [{ label: t3("tutSkip"), cls: "tbtn", id: "tut-skip" }, { label: t3("tutNext"), id: "tut-next", onClick: function () {
+        if (i >= TUTORIAL.length - 1) { closeDialog(); return; }
+        go_(i + 1);
+      } }],
+      onClose: function () { data.settings.tutorialSeen = true; save(); } });
+    d.classList.add("tutorial");
+    var track = d.querySelector("#tut");
+    var moving = 0; // while the buttons scroll the cards, the scroll position isn't the card yet
+    function go_(k) {
+      i = Math.max(0, Math.min(TUTORIAL.length - 1, k)); moving = Date.now();
+      track.scrollTo({ left: i * track.clientWidth, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+      sync();
+    }
+    function sync() {
+      if (Date.now() - moving > 600) i = Math.round(track.scrollLeft / Math.max(1, track.clientWidth)); // swiped by hand
+      d.querySelectorAll("[data-dot]").forEach(function (el) { el.classList.toggle("on", +el.dataset.dot === i); });
+      var last = i >= TUTORIAL.length - 1;
+      d.querySelector("#tut-next").textContent = last ? t3("tutDone") : t3("tutNext");
+      d.querySelector("#tut-skip").style.visibility = last ? "hidden" : "";
+    }
+    track.addEventListener("scroll", function () { requestAnimationFrame(sync); });
+    d.querySelectorAll("[data-dot]").forEach(function (el) { el.onclick = function () { go_(+el.dataset.dot); }; });
+    sync();
+  }
+  function whatsNew() {
+    dialog({ icon: "sparkle", title: t3("whatsNewTitle")(APP_VERSION), noFocus: true,
+      body: '<ul class="news">' + t3("whatsNewItems").split("\n").map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("") + "</ul>",
+      actions: [{ label: t3("allPatchNotes"), cls: "tbtn", onClick: function () { closeDialog(); notesDialog(); } }, { label: t3("ok"), cls: "btn" }] });
+  }
+  /** New users get the introduction; people updating from an older version get "what's new". */
+  function startupDialogs() {
+    var st = data.settings;
+    if (ui.screen === "timer") return; // a speech is running: show it next time
+    if (!hadData && !st.tutorialSeen) tutorial();
+    else if (st.lastSeenVersion !== APP_VERSION) { st.tutorialSeen = true; whatsNew(); }
+    st.lastSeenVersion = APP_VERSION; save();
+  }
   function deleteDialog(p) {
     confirmDialog(f("deleteTitle")(p.title), p.archived ? t("cannotBeUndone") : t("deleteForeverText"), t("delete"), function () { deletePlan(p); render(); }, true,
       p.archived ? [] : [{ label: t("archiveAction"), cls: "tbtn", onClick: function () { closeDialog(); replacePlan(p.id, function (x) { x.archived = true; return x; }); toast(t("archived")); render(); } }]);
@@ -1134,7 +1482,35 @@
 
   // --- Events ------------------------------------------------------------------------
   var actions = {
-    "tab-library": backToLibrary,
+    "tab-library": function () { ui.folder = null; backToLibrary(); },
+    "meeting": openMeeting,
+    "open-folder": function (el) { ui.folder = el.dataset.id; go("library"); },
+    "folder-back": function () { ui.folder = null; go("library"); },
+    "new-folder": function () { folderDialog(null, function (f) { ui.folder = f.id; go("library"); }); },
+    "folder-menu": function (el) {
+      var f = folderById(ui.folder); if (!f) return;
+      menu(el, [
+        { icon: "edit", text: t3("renameFolder"), onClick: function () { folderDialog(f); } },
+        { icon: "del", text: t3("deleteFolder"), onClick: function () { deleteFolderDialog(f); } },
+      ]);
+    },
+    "run-mode": function (el) { data.settings.runMode = el.dataset.v; save(); render(); },
+    "drill": drillDialog,
+    "drill-again": function () { if (ui.drill) startDrill(ui.drill.planId, ui.drill.index, ui.drill.attempts); },
+    "history-filter": function (el) { ui.historyFilter = el.dataset.v; render(); },
+    "meeting-kind": function (el) { data.settings.meetingKind = el.dataset.v; save(); render(); },
+    "meeting-lang": function (el) { data.settings.meetingLang = el.dataset.v; save(); fetchMeetings(el.dataset.v); render(); },
+    "meeting-retry": function () { fetchMeetings(meetingLang(), true); render(); },
+    "week-prev": function () { ui.weekOffset--; render(); },
+    "week-next": function () { ui.weekOffset++; render(); },
+    "week-now": function () { ui.weekOffset = 0; render(); },
+    "meeting-start": function () { var m = chosenMeeting(); if (!m) return; ui.plan = m; ui.quick = false; ui.drill = null; startTimer(); },
+    "meeting-history": function () {
+      ui.plan = chosenMeeting() || (data.settings.meetingKind === "weekend" ? weekendPlan(meetingLang()) : { id: MIDWEEK_ID, title: t3("meetingMidweek"), segments: [], meeting: { kind: "midweek", buffer: MIDWEEK_BUFFER } });
+      ui.expandedRun = null; go("history");
+    },
+    "whats-new": whatsNew,
+    "tutorial": tutorial,
     "tab-settings": function () { ui.plan = null; go("settings"); },
     "back-library": backToLibrary,
     "archive": function () { go("archive"); },
@@ -1148,6 +1524,7 @@
       menu(el, [
         { icon: "edit", text: t("edit"), onClick: function () { startEditing(p, "library"); } },
         { icon: "share", text: t("export"), onClick: function () { exportDialog(p); } },
+        { icon: "move", text: t3("moveToFolder"), onClick: function () { moveMenu(el, p); } },
         { icon: "archive", text: t("archiveAction"), onClick: function () { replacePlan(p.id, function (x) { x.archived = true; return x; }); toast(t("archived")); render(); } },
         { icon: "del", text: t("delete"), onClick: function () { deleteDialog(p); } },
       ]);
@@ -1174,8 +1551,8 @@
     "edit-active": function () { startEditing(ui.plan, "ready"); },
     "export-active": function () { if (ui.plan) exportDialog(ui.plan); },
     "export-library": function () { exportDialog(null); },
-    "history": function () { ui.expandedRun = null; go("history"); },
-    "close-history": function () { go(ui.plan ? "ready" : "library"); },
+    "history": function () { ui.expandedRun = null; ui.historyFilter = "all"; go("history"); },
+    "close-history": function () { if (ui.plan && ui.plan.meeting) { ui.plan = null; go("meeting"); } else go(ui.plan ? "ready" : "library"); },
     "toggle-run": function (el) { ui.expandedRun = ui.expandedRun === el.dataset.id ? null : el.dataset.id; render(); },
     "delete-run": function (el) { data.runs = data.runs.filter(function (r) { return r.id !== el.dataset.id; }); save(); render(); },
     "share-run": function (el) { var r = data.runs.filter(function (x) { return x.id === el.dataset.id; })[0]; if (r) share(report(r), t("shareReport")); },
@@ -1201,7 +1578,7 @@
     if (fn) { e.preventDefault(); fn(el); }
   });
   root.addEventListener("keydown", function (e) {
-    if ((e.key === "Enter" || e.key === " ") && e.target.matches('.plan, .switchrow')) { e.preventDefault(); e.target.click(); }
+    if ((e.key === "Enter" || e.key === " ") && e.target.matches('.plan, .switchrow, .folder')) { e.preventDefault(); e.target.click(); }
   });
   root.addEventListener("input", function (e) {
     var el = e.target, k = el.dataset && el.dataset.in;
@@ -1247,6 +1624,7 @@
     if (!hasFiles(e) || ui.screen === "timer") return;
     e.preventDefault();
     if (ui.screen === "edit" && hasUnsavedEdits()) return;
+    if (ui.screen === "timer") return;
     var file = e.dataTransfer.files[0];
     if (file) importFile(file);
   });
@@ -1284,6 +1662,7 @@
   lang = resolveLang();
   if (restoreRun()) { afterChange(); setTimeout(function () { toast(t("restoredRun")); }, 400); }
   render();
+  startupDialogs();
   if ("serviceWorker" in navigator && location.protocol === "https:") {
     navigator.serviceWorker.register("sw.js").catch(function () {});
   }
