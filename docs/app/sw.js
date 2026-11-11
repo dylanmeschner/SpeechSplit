@@ -1,6 +1,6 @@
 // Speech Split web version: works offline once it has been opened.
 // Raise VERSION whenever a file below changes, so browsers pick up the new version.
-var VERSION = "speechsplit-web-3.0";
+var VERSION = "speechsplit-web-3.1";
 var CORE = ["./", "index.html", "app.js", "strings.js", "strings3.js", "manifest.webmanifest", "icon-192.png", "icon-512.png", "apple-touch-icon.png"];
 
 self.addEventListener("install", function (e) {

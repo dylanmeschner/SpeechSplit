@@ -42,6 +42,10 @@ interface AppStore {
     /** Reads a meeting program file (docs/meetings/<lang>.json). Null if it isn't one. */
     fun readMeetingProgram(text: String): MeetingProgram? = null
 
+    /** Sub-parts of meeting parts, by [subpartsKey]. */
+    fun loadMeetingSubparts(): Map<String, List<SpeechSegment>> = emptyMap()
+    fun saveMeetingSubparts(subparts: Map<String, List<SpeechSegment>>) {}
+
     /** True if settings were ever saved: the app was used before (so it's an update, not a first start). */
     fun hasSavedSettings(): Boolean = false
 }
@@ -129,6 +133,12 @@ interface PlatformServices {
     val supportsDnd: Boolean get() = true
     /** Keyboard / presentation-clicker shortcuts (desktop). */
     val hasKeyboardShortcuts: Boolean get() = false
+
+    /** Can show a big clock in its own window on a second screen (desktop). */
+    val supportsSecondScreen: Boolean get() = false
+
+    /** True when a second screen is connected right now. */
+    fun hasSecondScreen(): Boolean = false
 
     /** Do Not Disturb (Focus on iPad / Windows). */
     fun hasDndAccess(): Boolean

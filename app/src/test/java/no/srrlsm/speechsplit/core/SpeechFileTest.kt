@@ -149,6 +149,20 @@ class SpeechFileTest {
     }
 
     @Test
+    fun bufferAndSubpartsSurviveSaving() {
+        val withBuffer = talk.copy(bufferSeconds = 150)
+        val back = JsonCodec.plansFromJson(JsonCodec.plansToJson(listOf(withBuffer, toast))).first
+        assertEquals(listOf(150, 0), back.map { it.bufferSeconds })
+        // A shared export keeps it too, and an old file without it reads as "none"
+        assertEquals(150, JsonCodec.readSpeechFile(JsonCodec.planFileText(withBuffer), "x")!!.plans.single().bufferSeconds)
+        assertEquals(0, JsonCodec.readSpeechFile("""{"title":"Old","segments":[{"title":"A","target":60}]}""", "x")!!.plans.single().bufferSeconds)
+        val subs = mapOf("2026-11-02/mw-p1" to listOf(intro, end), "weekend/we-talk" to listOf(end))
+        assertEquals(subs, JsonCodec.subpartsFromJson(JsonCodec.subpartsToJson(subs)))
+        assertTrue(JsonCodec.subpartsFromJson("not json").isEmpty())
+        assertTrue(JsonCodec.settingsFromJson(JsonCodec.settingsToJson(AppSettings(secondScreen = true))).secondScreen)
+    }
+
+    @Test
     fun meetingProgramFileReads() {
         val text = """{"format":1,"lang":"no","weeks":[{"start":"2026-11-02","reading":"Jeremia 49–50","songs":[1,44,33],
             "parts":[{"n":1,"title":"Hjelp andre","min":10},{"n":7,"title":"Glem aldri","min":15}],"livingFrom":7}],"updated":"2026-11-04"}"""

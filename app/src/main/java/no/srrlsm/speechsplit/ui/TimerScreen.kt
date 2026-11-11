@@ -116,7 +116,7 @@ fun TimerScreen(app: AppController) {
                 planTitle = plan.title,
                 index = index,
                 count = segments.size,
-                segmentTitle = current.title,
+                segmentTitle = current.fullTitle,
                 targetSeconds = current.targetSeconds,
                 elapsed = elapsed[index],
                 totalElapsed = totalElapsed,
@@ -140,6 +140,17 @@ fun TimerScreen(app: AppController) {
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(plan.title, color = AppTheme.colors.textSub, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                        if (app.supportsSecondScreen && !finished) {
+                            // Windows: the big clock on a second screen, on or off
+                            val s3 = LocalStrings3.current
+                            IconButton(onClick = { app.toggleSecondScreen() }) {
+                                Icon(
+                                    Icons.Default.Tv,
+                                    contentDescription = s3.secondScreenTitle,
+                                    tint = if (settings.secondScreen) AppTheme.colors.adjusted else AppTheme.colors.textSub,
+                                )
+                            }
+                        }
                         if (!finished) {
                             IconButton(onClick = toggleLectern) {
                                 Icon(Icons.Default.Fullscreen, contentDescription = s.lecternOn, tint = AppTheme.colors.textSub)
@@ -166,8 +177,8 @@ fun TimerScreen(app: AppController) {
                         }
                     }
 
-                    // Meeting: the spare minutes, which shrink as soon as the program runs late
-                    val buffer = plan.meeting?.bufferSeconds ?: 0
+                    // The spare time (a meeting's, or the speech's own buffer) shrinks as soon as the program runs late
+                    val buffer = plan.spareSeconds
                     if (buffer > 0 && !finished) {
                         val left = buffer - scheduleDiff.coerceAtLeast(0)
                         val s3 = LocalStrings3.current
@@ -265,13 +276,13 @@ fun TimerScreen(app: AppController) {
 // LECTERN MODE: one huge, high-contrast clock, readable from a distance.
 // Always black with bright status colours, whatever the app theme, for maximum contrast.
 // ============================================================================
-private val LecternBg = Color(0xFF000000)
-private val LecternText = Color(0xFFFFFFFF)
-private val LecternSub = Color(0xFFB8BDC2)
-private val LecternWarning = Color(0xFFFFD54F)
-private val LecternOver = Color(0xFFFF6E60)
+internal val LecternBg = Color(0xFF000000)
+internal val LecternText = Color(0xFFFFFFFF)
+internal val LecternSub = Color(0xFFB8BDC2)
+internal val LecternWarning = Color(0xFFFFD54F)
+internal val LecternOver = Color(0xFFFF6E60)
 
-private fun TimeStatus.lecternColor(): Color = when (this) {
+internal fun TimeStatus.lecternColor(): Color = when (this) {
     TimeStatus.ON_TRACK -> LecternText
     TimeStatus.WARNING -> LecternWarning
     TimeStatus.OVER -> LecternOver
@@ -401,6 +412,17 @@ private fun CurrentSegmentPanel(
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             SectionLabel(s.nowOf(index + 1, count), size = 10.sp)
             SectionLabel("${s.target}  ${formatTime(segment.targetSeconds)}", size = 10.sp)
+        }
+        // A sub-part of a meeting part: the part it belongs to, small, above its own name
+        if (segment.group.isNotBlank()) {
+            Text(
+                segment.group,
+                fontSize = 13.sp,
+                color = AppTheme.colors.textSub,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(top = 4.dp),
+            )
         }
         Text(
             segment.title,

@@ -186,6 +186,13 @@ fun EditScreen(app: AppController) {
                         Text(" ${s.addSegment}")
                     }
                 }
+                // Spare time (buffer): optional, below the parts so it doesn't get in the way
+                item(key = "buffer") {
+                    BufferEditor(
+                        bufferSeconds = plan.bufferSeconds,
+                        onChange = { secs -> app.updateActivePlan { it.copy(bufferSeconds = secs) } },
+                    )
+                }
             }
 
             if (keyboardFirst) {
@@ -201,6 +208,39 @@ fun EditScreen(app: AppController) {
                 enabled = plan.segments.isNotEmpty(),
                 modifier = Modifier.fillMaxWidth().height(56.dp),
             ) { FitText(s.saveAndReady, maxSize = 18.sp) }
+        }
+    }
+}
+
+/** The speech's spare time: one small field with a line that says what it does. Empty means none. */
+@Composable
+private fun BufferEditor(bufferSeconds: Int, onChange: (Int) -> Unit) {
+    val s3 = LocalStrings3.current
+    val c = AppTheme.colors
+    var text by remember { mutableStateOf(if (bufferSeconds > 0) formatTimeForInput(bufferSeconds) else "") }
+    Card(Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 12.dp)) {
+        Column(Modifier.padding(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = {
+                        text = it
+                        onChange(parseTimeInput(it))
+                    },
+                    label = { Text(s3.bufferLabel, maxLines = 1) },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
+                    modifier = Modifier.width(210.dp),
+                )
+                Text(
+                    "= ${formatTime(bufferSeconds)}",
+                    color = c.textSub,
+                    style = Tabular,
+                    maxLines = 1,
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                )
+            }
+            Text(s3.bufferHint, color = c.textSub, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
         }
     }
 }

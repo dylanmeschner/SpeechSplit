@@ -66,6 +66,9 @@ fun ReadyScreen(app: AppController) {
                 )
                 Spacer(Modifier.height(8.dp))
                 Text(s.summaryOf(plan), fontSize = (18 * scale).sp, color = c.textSub, textAlign = TextAlign.Center)
+                if (plan.bufferSeconds > 0) {
+                    Text(s3.bufferPlus(formatTime(plan.bufferSeconds)), fontSize = (15 * scale).sp, color = c.textSub, textAlign = TextAlign.Center)
+                }
 
                 Spacer(Modifier.height(if (shortPane) 16.dp else 40.dp))
 

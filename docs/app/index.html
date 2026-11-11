@@ -181,6 +181,22 @@
   .prow span { flex: 1; min-width: 0; }
   .prow:last-child { border-bottom: 0; }
   .prow.total span { color: var(--sub); font-size: 13px; font-weight: 600; }
+  /* Meeting mode: the language button, parts that fold out, and their sub-parts */
+  .langbtn { display: inline-flex; align-items: center; gap: 6px; }
+  .langbtn svg { width: 20px; height: 20px; }
+  button.prow { width: 100%; background: none; border: 0; border-bottom: 1px solid var(--line); text-align: left; cursor: pointer; align-items: center; }
+  button.prow svg { width: 20px; height: 20px; flex: none; color: var(--sub); margin-left: -6px; }
+  .prow small { display: block; font-size: 12px; font-weight: 600; color: var(--blue); }
+  .subs { margin: 0 -14px; padding: 10px 8px 2px 14px; background: var(--surface2); border-bottom: 1px solid var(--line); }
+  .subs .r { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+  .subs input { flex: 1; min-width: 0; border: 1.5px solid var(--line); background: var(--bg); border-radius: 12px; padding: 10px 12px; outline: none; }
+  .subs input:focus { border-color: var(--ink); }
+  .subs input.time { flex: 0 0 84px; }
+  .subsum { margin: 4px 2px 0; } .subsum.over { color: var(--red); }
+  .sublinks { display: flex; flex-wrap: wrap; align-items: center; }
+  .sublinks .tbtn { display: inline-flex; align-items: center; gap: 4px; }
+  .sublinks .tbtn svg { width: 18px; height: 18px; }
+  .t-seg .grp { margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .bufline { margin: -4px 20px 10px; font-size: 11px; font-weight: 700; letter-spacing: .05em; color: var(--blue); }
   .bufline.used { color: var(--amber); } .bufline.over { color: var(--red); }
 

@@ -81,6 +81,16 @@ The texts that came with 3.0 (meeting mode, folders, summary, introduction...) l
 three languages: `tools/strings3.py`. Change them there and run `python3 tools/strings3.py`; it writes
 `docs/app/strings3.js` (web) and `core/Strings3.kt` (apps). Older texts are still in `Strings.kt` and `strings.js`.
 
+## Sub-parts, spare time and the second screen (3.1)
+
+- **Sub-parts**: on the meeting screen a part can be split into sub-parts (or filled from a saved speech). They're kept
+  per week and part (`subpartsKey` in `core/Meetings.kt`), and `expandSubparts` swaps them in when the meeting starts,
+  so the timer itself is unchanged. Web: `data.subparts` and `expandSubparts` in `docs/app/app.js`.
+- **Spare time (buffer)** of a speech is `SpeechPlan.bufferSeconds` (`"buffer"` in the files). How a run is judged
+  is in one place: `PracticeRun.diffSeconds` (web: `runDiff`).
+- **Second screen** (desktop only): `SecondScreenWindow` in `desktop/.../Main.kt` shows `ui/SecondScreen.kt` on the
+  other monitor while the timer is open. Setting `secondScreen`, shortcut S.
+
 ## Meeting mode: new workbooks
 
 The midweek program comes from `docs/meetings/<lang>.json` on the website. The apps and the web version

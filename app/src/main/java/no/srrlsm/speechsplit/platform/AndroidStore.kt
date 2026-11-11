@@ -11,6 +11,7 @@ import no.srrlsm.speechsplit.core.MeetingKind
 import no.srrlsm.speechsplit.core.MeetingProgram
 import no.srrlsm.speechsplit.core.PracticeRun
 import no.srrlsm.speechsplit.core.SpeechPlan
+import no.srrlsm.speechsplit.core.SpeechSegment
 import no.srrlsm.speechsplit.core.SpeechFile
 import no.srrlsm.speechsplit.core.SpeechSort
 import no.srrlsm.speechsplit.core.WarningOptions
@@ -65,6 +66,13 @@ class AndroidStore(context: Context) : AppStore {
     }
 
     override fun readMeetingProgram(text: String): MeetingProgram? = JsonCodec.meetingProgramFromJson(text)
+
+    override fun loadMeetingSubparts(): Map<String, List<SpeechSegment>> =
+        JsonCodec.subpartsFromJson(planPrefs.getString(KEY_SUBPARTS, "{}") ?: "{}")
+
+    override fun saveMeetingSubparts(subparts: Map<String, List<SpeechSegment>>) {
+        planPrefs.edit().putString(KEY_SUBPARTS, JsonCodec.subpartsToJson(subparts)).apply()
+    }
 
     override fun hasSavedSettings(): Boolean = settingsPrefs.all.isNotEmpty()
 
@@ -141,5 +149,6 @@ class AndroidStore(context: Context) : AppStore {
         const val KEY_PLANS = "saved_plans"
         const val KEY_RUNS = "practice_runs"
         const val KEY_FOLDERS = "folders"
+        const val KEY_SUBPARTS = "meeting_subparts"
     }
 }

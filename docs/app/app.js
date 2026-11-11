@@ -7,7 +7,7 @@
 // ============================================================================
 (function () {
   "use strict";
-  var APP_VERSION = "3.0";
+  var APP_VERSION = "3.1";
   var REPO = "dylanmeschner/SpeechSplit";
   var SITE = "https://dylanmeschner.github.io/SpeechSplit/";
   var RELEASES = "https://github.com/" + REPO + "/releases";
@@ -70,6 +70,7 @@
     history: "M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z",
     replay: "M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z",
     school: "M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82zM12 3L1 9l11 6 9-4.91V17h2V9L12 3z",
+    globe: "M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zm6.93 6h-2.95c-.32-1.25-.78-2.45-1.38-3.56 1.84.63 3.37 1.91 4.33 3.56zM12 4.04c.83 1.2 1.48 2.53 1.91 3.96h-3.82c.43-1.43 1.08-2.76 1.91-3.96zM4.26 14C4.1 13.36 4 12.69 4 12s.1-1.36.26-2h3.38c-.08.66-.14 1.32-.14 2 0 .68.06 1.34.14 2H4.26zm.82 2h2.95c.32 1.25.78 2.45 1.38 3.56-1.84-.63-3.37-1.9-4.33-3.56zm2.95-8H5.08c.96-1.66 2.49-2.93 4.33-3.56C8.81 5.55 8.35 6.75 8.03 8zM12 19.96c-.83-1.2-1.48-2.53-1.91-3.96h3.82c-.43 1.43-1.08 2.76-1.91 3.96zM14.34 14H9.66c-.09-.66-.16-1.32-.16-2 0-.68.07-1.35.16-2h4.68c.09.65.16 1.32.16 2 0 .68-.07 1.34-.16 2zm.25 5.56c.6-1.11 1.06-2.31 1.38-3.56h2.95c-.96 1.65-2.49 2.93-4.33 3.56zM16.36 14c.08-.66.14-1.32.14-2 0-.68-.06-1.34-.14-2h3.38c.16.64.26 1.31.26 2s-.1 1.36-.26 2h-3.38z",
     inventory: "M20 2H4c-1 0-2 .9-2 2v3.01c0 .72.43 1.34 1 1.69V20c0 1.1 1.1 2 2 2h14c.9 0 2-.9 2-2V8.7c.57-.35 1-.97 1-1.69V4c0-1.1-1-2-2-2zm-5 12H9v-2h6v2zm5-7H4V4l16-.02V7z",
   };
   function icon(name) { return '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="' + P[name] + '"/></svg>'; }
@@ -109,7 +110,8 @@
     speechSort: "LAST_USED", installHintHidden: false,
     tutorialSeen: false, lastSeenVersion: "", runMode: "practice", meetingKind: "midweek", meetingLang: "",
   };
-  var data = { plans: [], runs: [], folders: [], settings: Object.assign({}, DEFAULT_SETTINGS) };
+  // subparts: sub-parts of meeting parts, by "2026-11-02/mw-p1" (midweek, per week) or "weekend/we-talk"
+  var data = { plans: [], runs: [], folders: [], subparts: {}, settings: Object.assign({}, DEFAULT_SETTINGS) };
   var hadData = false; // something was saved before this start (an existing user)
   function load() {
     try {
@@ -120,6 +122,7 @@
         data.folders = Array.isArray(d.folders) ? d.folders.filter(function (x) { return x && x.id && x.name; }) : [];
         data.plans = Array.isArray(d.plans) ? d.plans.filter(function (p) { return p && Array.isArray(p.segments); }) : [];
         data.runs = Array.isArray(d.runs) ? d.runs : [];
+        data.subparts = d.subparts && typeof d.subparts === "object" && !Array.isArray(d.subparts) ? d.subparts : {};
         data.settings = Object.assign({}, DEFAULT_SETTINGS, d.settings || {});
       }
     } catch (e) { /* first start, or storage blocked */ }
@@ -231,6 +234,7 @@
     drill: null,             // practising one part: { planId, index, attempts: [seconds...] }
     historyFilter: "all",    // all | practice | live
     weekOffset: 0,           // meeting mode: weeks from this week
+    openPart: null,          // meeting mode: id of the part whose sub-parts are folded out
   };
   function planById(id) { return data.plans.filter(function (p) { return p.id === id; })[0]; }
   function recent(p) { return Math.max(p.lastUsedAt || 0, p.createdAt || 0); }
@@ -379,14 +383,29 @@
     if (!plan || !isActive()) return null;
     var secs = allElapsed();
     var run = { id: newId(), planId: plan.id, planTitle: plan.title, finishedAt: Date.now(),
-      segments: plan.segments.map(function (s, i) { return { segmentId: s.id, title: s.title, target: s.targetSeconds, actual: secs[i] || 0 }; }) };
+      segments: plan.segments.map(function (s, i) { return { segmentId: s.id, title: fullTitle(s), target: s.targetSeconds, actual: secs[i] || 0 }; }) };
     if (plan.meeting) { run.meeting = plan.meeting.kind; run.buffer = bufferOf(plan); run.live = true; }
-    else if (data.settings.runMode === "live") run.live = true;
+    else {
+      if (data.settings.runMode === "live") run.live = true;
+      if (bufferOf(plan)) run.buffer = bufferOf(plan); // the speech's own spare time
+    }
     return run;
   }
   function runTotal(r, k) { return sum(r.segments.map(function (s) { return s[k]; })); }
-  /** Over (+) or under (-) the plan. A meeting's buffer counts as planned time. */
-  function runDiff(r) { return runTotal(r, "actual") - runTotal(r, "target") - (r.buffer || 0); }
+  /**
+   * Over (+) or under (-) the plan. A meeting is measured against its whole length (program + spare time).
+   * A speech with spare time is on time (0) anywhere inside it, under when it ends before the planned
+   * time, and over only by what went beyond the spare time.
+   */
+  function runDiff(r) {
+    var raw = runTotal(r, "actual") - runTotal(r, "target"), b = r.buffer || 0;
+    if (r.meeting) return raw - b;
+    return raw <= 0 ? raw : Math.max(0, raw - b);
+  }
+  /** How much of its spare time a speech used (0 for a meeting, or when it ended before the planned time). */
+  function bufferUsed(r) { return r.meeting ? 0 : Math.max(0, Math.min(r.buffer || 0, runTotal(r, "actual") - runTotal(r, "target"))); }
+  /** "20:00", or "20:00 + 02:00" when there's spare time. */
+  function planWithBuffer(target, buffer) { return buffer > 0 ? fmt(target) + " + " + fmt(buffer) : fmt(target); }
   function recordRun() {
     if (ui.quick || (ui.plan && ui.plan.drill) || !isFinished() || recordedRunId) return;
     var run = snapshot();
@@ -425,7 +444,7 @@
   }
   function report(run) {
     var lines = ["Speech Split · " + run.planTitle, fmtDate(run.finishedAt),
-      t("reportTotal") + " " + fmt(runTotal(run, "actual")) + " (" + f("reportPlan")(fmt(runTotal(run, "target") + (run.buffer || 0))) + ")  " + fmtDiff(runDiff(run)), ""];
+      t("reportTotal") + " " + fmt(runTotal(run, "actual")) + " (" + f("reportPlan")(planWithBuffer(runTotal(run, "target"), run.buffer || 0)) + ")  " + fmtDiff(runDiff(run)), ""];
     run.segments.forEach(function (s, i) {
       lines.push((i + 1) + ". " + s.title + "  " + fmt(s.actual) + " (" + f("reportPlan")(fmt(s.target)) + ")  " + fmtDiff(s.actual - s.target));
     });
@@ -511,8 +530,43 @@
     var w = weekFor(l, mondayIso(ui.weekOffset));
     return w ? midweekPlan(w, l) : null;
   }
-  function bufferOf(p) { return p && p.meeting ? p.meeting.buffer || 0 : 0; }
-  /** What the run is measured against at the end: the program, plus a meeting's buffer. */
+  /** The spare time that applies: the meeting's, or the speech's own (set in the editor). */
+  function bufferOf(p) { return !p ? 0 : p.meeting ? p.meeting.buffer || 0 : p.buffer || 0; }
+
+  // --- Sub-parts of a meeting part ---------------------------------------------------
+  // The chairman can split a part into sub-parts on the meeting screen (or bring in a saved speech),
+  // for example when he has a part himself. Kept per week and part, so a meeting can be prepared ahead.
+  function subKey(plan, segId) { var m = plan.meeting; return (m && m.kind === "midweek" && m.week ? m.week : "weekend") + "/" + segId; }
+  function subsOf(plan, seg) { return data.subparts[subKey(plan, seg.id)] || []; }
+  /** Replaces a part's sub-parts (an empty list removes them) and saves. Old weeks are dropped along the way. */
+  function setSubs(plan, seg, list) {
+    var key = subKey(plan, seg.id);
+    if (list.length) data.subparts[key] = list; else delete data.subparts[key];
+    var oldest = mondayIso(-8);
+    Object.keys(data.subparts).forEach(function (k) { var w = k.split("/")[0]; if (w !== "weekend" && w < oldest) delete data.subparts[k]; });
+    save();
+  }
+  /**
+   * The plan the timer runs: every part that has sub-parts is replaced by them. If they're shorter than
+   * the part, the rest goes to the last one (the meeting keeps its length); if longer, they're used as they are.
+   */
+  function expandSubparts(plan) {
+    var out = [];
+    plan.segments.forEach(function (seg) {
+      var subs = subsOf(plan, seg);
+      if (!subs.length) { out.push(seg); return; }
+      var rest = Math.max(0, seg.targetSeconds - sum(subs.map(function (x) { return x.targetSeconds; })));
+      subs.forEach(function (x, i) {
+        out.push({ id: seg.id + "/" + x.id, title: String(x.title || "").trim() || seg.title,
+          targetSeconds: x.targetSeconds + (i === subs.length - 1 ? rest : 0), group: seg.title });
+      });
+    });
+    var copy = Object.assign({}, plan); copy.segments = out;
+    return copy;
+  }
+  /** The title for reports and the history: "1. Part · Introduction" for a sub-part. */
+  function fullTitle(s) { return s.group ? s.group + " · " + s.title : s.title; }
+  /** What the run is measured against at the end: the program, plus the spare time. */
   function planTarget(p) { return totalTarget(p) + bufferOf(p); }
 
   // --- Summary after a run ---------------------------------------------------------
@@ -527,7 +581,9 @@
   function buildSummary(run, prev) {
     var praise = [], notes = [], segs = run.segments, total = runDiff(run), tol = Math.max(0, data.settings.celebrateTolerance);
     var meeting = !!run.meeting;
-    if (total === 0) praise.push(t3("praisePerfect"));
+    var used = bufferUsed(run); // a speech with spare time that ended inside it: on time, without having hit the second
+    if (used > 0 && total === 0) praise.push(t3("praiseWithinBuffer")(fmt(used)));
+    else if (total === 0) praise.push(t3("praisePerfect"));
     else if (Math.abs(total) <= Math.max(10, tol)) praise.push(t3("praiseTotalClose")(fmt(Math.abs(total))));
     else if (total < 0 && meeting) praise.push(t3("praiseUnder")(fmt(-total)));
     var onTime = segs.filter(function (s) { return verdict(s.actual - s.target, s.target) === "ok"; }).length;
@@ -683,7 +739,10 @@
     save();
   }
   function exportText(p) {
-    return JSON.stringify({ title: p.title, segments: p.segments.map(function (s) { return { title: s.title, target: s.targetSeconds }; }) });
+    var o = { title: p.title };
+    if (p.buffer) o.buffer = p.buffer;
+    o.segments = p.segments.map(function (s) { return { title: s.title, target: s.targetSeconds }; });
+    return JSON.stringify(o);
   }
   // --- Export as a .speechsplit file (same format as the apps' "Export") --------------
   // One speech, one speech with its history, or the whole library (speeches, archive, history).
@@ -696,6 +755,7 @@
     var o = {};
     if (withIds) { o.id = p.id; if (p.createdAt) o.createdAt = p.createdAt; if (p.lastUsedAt) o.lastUsedAt = p.lastUsedAt; if (p.archived) o.archived = true; if (p.folderId) o.folderId = p.folderId; }
     o.title = p.title;
+    if (p.buffer) o.buffer = p.buffer; // spare time: part of the speech, so it's in a shared export too
     o.segments = p.segments.map(function (s) { var x = { title: s.title, target: s.targetSeconds }; if (withIds) x.id = s.id; return x; });
     return o;
   }
@@ -763,6 +823,8 @@
       createdAt: keepIds && o.createdAt ? +o.createdAt : Date.now(), lastUsedAt: keepIds && o.lastUsedAt ? +o.lastUsedAt : 0, archived: keepIds && !!o.archived,
       segments: (o.segments || []).map(function (s) { return { id: keepIds && s.id ? String(s.id) : newId(), title: String(s.title || ""), targetSeconds: Math.max(0, parseInt(s.target, 10) || 0), _old: s.id }; }) };
     if (keepIds && o.folderId) p.folderId = String(o.folderId);
+    var buffer = Math.max(0, parseInt(o.buffer, 10) || 0);
+    if (buffer) p.buffer = buffer;
     return p;
   }
   function cleanRuns(list) {
@@ -790,8 +852,11 @@
     var plan = planFromFile(o, false), map = {};
     plan.segments.forEach(function (s) { if (s._old) map[s._old] = s.id; delete s._old; });
     var hist = cleanRuns(o.history).map(function (r) {
-      return { id: newId(), planId: plan.id, planTitle: plan.title, finishedAt: r.finishedAt,
+      var copy = { id: newId(), planId: plan.id, planTitle: plan.title, finishedAt: r.finishedAt,
         segments: r.segments.map(function (x) { return { segmentId: map[x.segmentId] || x.segmentId, title: x.title, target: x.target, actual: x.actual }; }) };
+      if (r.live) copy.live = true;
+      if (r.buffer > 0) copy.buffer = r.buffer;
+      return copy;
     });
     if (hist.length) plan.lastUsedAt = Math.max.apply(null, hist.map(function (r) { return r.finishedAt; }));
     data.plans.push(plan);
@@ -1098,7 +1163,11 @@
         '<button class="ibtn" data-a="seg-up" data-i="' + i + '" ' + (i === 0 ? "disabled" : "") + ' aria-label="' + esc(t("moveUp")) + '">' + icon("up") + "</button>" +
         '<button class="ibtn" data-a="seg-down" data-i="' + i + '" ' + (i === p.segments.length - 1 ? "disabled" : "") + ' aria-label="' + esc(t("moveDown")) + '">' + icon("down") + "</button></div></div>";
     });
-    html += '</div><button class="tbtn" data-a="seg-add" style="align-self:flex-start;margin:6px 0 16px">' + icon("add") + " " + esc(t("addSegment")) + "</button>" +
+    html += '</div><button class="tbtn" data-a="seg-add" style="align-self:flex-start;margin:6px 0 8px">' + icon("add") + " " + esc(t("addSegment")) + "</button>" +
+      // Spare time (buffer): optional, below the parts so it doesn't get in the way
+      '<div class="card seg" style="margin-bottom:16px"><div class="label" style="margin:0 0 6px 2px">' + esc(t3("bufferLabel")) + '</div><div class="r">' +
+      '<input class="time tnum" inputmode="decimal" data-in="buffer" value="' + esc(p.buffer ? timeForInput(p.buffer) : "") + '" aria-label="' + esc(t3("bufferLabel")) + '" placeholder="0">' +
+      '<span class="eq tnum" id="eq-buffer">= ' + fmt(p.buffer || 0) + '</span></div><p class="sub small" style="margin:8px 2px 0">' + esc(t3("bufferHint")) + "</p></div>" +
       '<span class="grow" style="flex:1"></span><button class="btn big block" data-a="save" ' + (p.segments.length ? "" : "disabled") + ">" + esc(t("saveAndReady")) + "</button></div>";
     root.innerHTML = html;
   }
@@ -1113,6 +1182,7 @@
     var p = ui.plan; if (!p) return backToLibrary();
     var runs = runsFor(p.id).length;
     root.innerHTML = '<div class="ready"><div class="label" style="letter-spacing:.15em">' + esc(t("readyToSpeak")) + "</div><h1>" + esc(p.title) + '</h1><div class="sub">' + esc(summaryOf(p)) + "</div>" +
+      (p.buffer ? '<div class="sub small">' + esc(t3("bufferPlus")(fmt(p.buffer))) + "</div>" : "") +
       '<div class="mode">' + segmented("run-mode", [["practice", t3("modePractice")], ["live", t3("modeLive")]], data.settings.runMode === "live" ? "live" : "practice") +
       '<p class="sub small">' + esc(t3("modeDesc")) + "</p></div>" +
       '<button class="btn start" data-a="start" ' + (p.segments.length ? "" : "disabled") + ">" + icon("play") + esc(t("startTimer")) + "</button>" +
@@ -1135,7 +1205,9 @@
   function renderMeeting() {
     var st = data.settings, l = meetingLang(), kind = st.meetingKind === "weekend" ? "weekend" : "midweek";
     var plan = chosenMeeting(), state = meetState[l], have = !!meetingData(l);
-    var html = '<div class="page"><div class="head"><button class="ibtn" data-a="back-library" aria-label="' + esc(t("back")) + '">' + icon("back") + "</button><h2>" + esc(t3("meetingMode")) + "</h2></div>" +
+    var html = '<div class="page"><div class="head"><button class="ibtn" data-a="back-library" aria-label="' + esc(t("back")) + '">' + icon("back") + "</button><h2>" + esc(t3("meetingMode")) + "</h2>" +
+      // The language of the program, up here where it's easy to find
+      '<button class="tbtn langbtn" data-a="meeting-lang" aria-label="' + esc(t3("meetingLanguage")) + '" title="' + esc(t3("meetingLanguage")) + '">' + icon("globe") + "<b>" + esc(l.toUpperCase()) + "</b></button></div>" +
       '<p class="sub small" style="margin:-8px 0 14px">' + esc(t3("meetingIntro")) + "</p>" +
       segmented("meeting-kind", [["midweek", t3("meetingMidweek")], ["weekend", t3("meetingWeekend")]], kind);
     if (kind === "midweek") {
@@ -1158,19 +1230,69 @@
       html += '<p class="sub small" style="margin:12px 2px">' + esc(t3("meetingWeekendNote")) + "</p>";
     }
     if (plan) {
-      html += '<div class="card program">' + plan.segments.map(function (s) {
-        return '<div class="prow"><span>' + esc(s.title) + '</span><b class="tnum">' + fmt(s.targetSeconds) + "</b></div>";
-      }).join("") + '<div class="prow total"><span>' + esc(plan.meeting.buffer ? t3("meetingTotal")(fmt(totalTarget(plan)), fmt(plan.meeting.buffer)) : t("reportTotal")) +
-        '</span><b class="tnum">' + fmt(planTarget(plan)) + "</b></div></div>";
+      // Tap a part to fold out its sub-parts (one at a time)
+      html += '<p class="sub small" style="margin:14px 2px 0">' + esc(t3("subpartsHint")) + '</p><div class="card program">' + plan.segments.map(function (s) {
+        var subs = subsOf(plan, s), open = ui.openPart === s.id;
+        return '<button class="prow part" data-a="part-toggle" data-id="' + esc(s.id) + '" aria-expanded="' + open + '"><span>' + esc(s.title) +
+          (subs.length ? "<small>" + esc(t3("subpartsCount")(subs.length)) + "</small>" : "") + '</span><b class="tnum">' + fmt(s.targetSeconds) + "</b>" + icon(open ? "up" : "down") + "</button>" +
+          (open ? subsEditor(s, subs) : "");
+      }).join("") + '<div class="prow total"><span id="meet-total-label"></span><b class="tnum" id="meet-total"></b></div></div>';
     }
     var runs = runsFor(kind === "weekend" ? WEEKEND_ID : MIDWEEK_ID).length;
     html += '<span style="flex:1"></span><div class="stack"><button class="btn big block" data-a="meeting-start" ' + (plan ? "" : "disabled") + ">" + icon("play") + esc(t3("meetingStart")) + "</button>" +
       '<div class="links" style="justify-content:center"><button class="tbtn sub" data-a="meeting-history">' + esc(runs ? t("history") + " (" + runs + ")" : t("history")) + "</button></div></div>";
-    if (kind === "midweek") {
-      html += '<div class="section" style="margin-top:8px"><div class="label">' + esc(t3("meetingLanguage")) + "</div>" +
-        segmented("meeting-lang", [["no", "Norsk"], ["en", "English"], ["de", "Deutsch"]], l) + "</div>";
-    }
     root.innerHTML = html + "</div>" + tabs();
+    if (plan) meetingTotals(plan);
+  }
+  /** Under a folded-out part: its sub-parts (name and time), and the three things you can do with them. */
+  function subsEditor(seg, subs) {
+    var h = '<div class="subs">';
+    subs.forEach(function (x, i) {
+      h += '<div class="r"><input data-in="sub-title" data-i="' + i + '" value="' + esc(x.title) + '" aria-label="' + esc(t3("subpartName")) + '" placeholder="' + esc(t3("subpartName")) + '" maxlength="120">' +
+        '<input class="time tnum" inputmode="decimal" data-in="sub-time" data-i="' + i + '" value="' + esc(timeForInput(x.targetSeconds)) + '" aria-label="' + esc(t3("subpartTime")) + '" placeholder="' + esc(t3("subpartTime")) + '">' +
+        '<button class="ibtn subtle" data-a="sub-del" data-i="' + i + '" aria-label="' + esc(t3("subpartRemove")) + '" title="' + esc(t3("subpartRemove")) + '">' + icon("close") + "</button></div>";
+    });
+    return h + '<p class="sub small tnum subsum" id="sub-sum"></p><div class="sublinks"><button class="tbtn" data-a="sub-add">' + icon("add") + " " + esc(t3("subpartAdd")) +
+      '</button><button class="tbtn" data-a="sub-speech">' + esc(t3("subpartFromSpeech")) + "</button>" +
+      (subs.length ? '<button class="tbtn sub" data-a="sub-clear">' + esc(t3("subpartClear")) + "</button>" : "") + "</div></div>";
+  }
+  /** The part that's folded out on the meeting screen, with its sub-parts. Null when none is. */
+  function openPart() {
+    var plan = ui.screen === "meeting" ? chosenMeeting() : null;
+    var seg = plan && plan.segments.filter(function (s) { return s.id === ui.openPart; })[0];
+    return seg ? { plan: plan, seg: seg, subs: subsOf(plan, seg) } : null;
+  }
+  /** The numbers that change while sub-parts are typed in: their sum, and the meeting's total. */
+  function meetingTotals(plan) {
+    var running = expandSubparts(plan), buffer = bufferOf(running);
+    var label = document.getElementById("meet-total-label"), total = document.getElementById("meet-total");
+    if (label) label.textContent = buffer ? t3("meetingTotal")(fmt(totalTarget(running)), fmt(buffer)) : t("reportTotal");
+    if (total) total.textContent = fmt(planTarget(running));
+    var c = openPart(), el = document.getElementById("sub-sum");
+    if (!c || !el) return;
+    var s = sum(c.subs.map(function (x) { return x.targetSeconds; })), left = c.seg.targetSeconds - s;
+    el.textContent = !c.subs.length ? "" : t3("subpartsSum")(fmt(s), fmt(c.seg.targetSeconds)) +
+      (left > 0 ? " · " + t3("subpartsLeft")(fmt(left)) : left < 0 ? " · " + t3("subpartsOver")(fmt(-left)) : "");
+    el.classList.toggle("over", left < 0);
+    el.classList.toggle("hidden", !c.subs.length);
+  }
+  /** "From a speech": the parts of a saved speech become the sub-parts (as copies: the speech isn't changed). */
+  function subSpeechDialog() {
+    var c = openPart(); if (!c) return;
+    var plans = visiblePlans();
+    var d = dialog({ title: t3("subpartFromSpeech"), noFocus: true,
+      body: '<p class="sub small" style="margin-top:0">' + esc(plans.length ? t3("subpartPick") : t3("subpartNoSpeeches")) + "</p>" + plans.map(function (p) {
+        return '<button class="choice" data-id="' + esc(p.id) + '"><span style="flex:1"><b>' + esc(p.title) + '</b></span><span class="tnum sub">' + fmt(totalTarget(p)) + "</span></button>";
+      }).join(""),
+      actions: [{ label: t("cancel"), cls: "tbtn" }] });
+    d.querySelectorAll("[data-id]").forEach(function (b) {
+      b.onclick = function () {
+        var p = planById(b.dataset.id); closeDialog();
+        if (!p) return;
+        setSubs(c.plan, c.seg, p.segments.map(function (s) { return { id: newId(), title: s.title, targetSeconds: s.targetSeconds }; }));
+        render();
+      };
+    });
   }
 
   // Timer: built once per change, then only the numbers are updated every tick
@@ -1186,7 +1308,7 @@
           '<button class="btn next" data-a="next">' + icon(last ? "flag" : "next") + "<span>" + esc(last ? t("finish") : t("next")) + "</span></button>") + "</div>";
     var html;
     if (lect) {
-      html = '<div class="lectern"><div class="top"><span>' + (idx + 1) + "/" + segs.length + " · " + esc(segs[idx].title) + '</span><button class="ibtn" data-a="lectern" aria-label="' + esc(t("lecternOff")) + '">' + icon("fullExit") +
+      html = '<div class="lectern"><div class="top"><span>' + (idx + 1) + "/" + segs.length + " · " + esc(fullTitle(segs[idx])) + '</span><button class="ibtn" data-a="lectern" aria-label="' + esc(t("lecternOff")) + '">' + icon("fullExit") +
         '</button><button class="ibtn" data-a="stop" aria-label="' + esc(t("stopTimer")) + '">' + icon("close") + '</button></div><div class="face"><div class="tnum" id="l-clock"></div></div>' +
         '<div class="bottom tnum"><span id="l-total"></span><span id="l-diff"></span></div>' + controls + '<div class="flash"></div></div>';
     } else {
@@ -1198,6 +1320,7 @@
         (bufferOf(p) && !fin ? '<div class="bufline" id="t-buffer"></div>' : "");
       if (!fin) {
         html += '<div class="t-seg"><div class="row"><span class="label" style="font-size:10px">' + esc(f("nowOf")(idx + 1, segs.length)) + '</span><span class="label" style="font-size:10px">' + esc(t("target") + "  " + fmt(segs[idx].targetSeconds)) + "</span></div>" +
+          (segs[idx].group ? '<div class="sub small grp">' + esc(segs[idx].group) + "</div>" : "") +
           "<h3>" + esc(segs[idx].title) + '</h3><div class="label" style="font-size:10px" id="t-clocklabel"></div><div class="clock tnum" id="t-clock"></div>' +
           (idx > 0 && data.settings.showAdjusted ? '<div class="adj" id="t-adj"><div style="flex:1"><div class="l" id="t-adjlabel"></div><div class="v tnum" id="t-adjv"></div></div><div style="text-align:right"><div class="label" style="font-size:10px;margin-bottom:4px">' + esc(t("banked")) + '</div><span class="pill tnum" id="t-banked"></span></div></div>' : "") + "</div>";
       } else html += finishedPanel(p);
@@ -1504,12 +1627,30 @@
     "drill-again": function () { if (ui.drill) startDrill(ui.drill.planId, ui.drill.index, ui.drill.attempts); },
     "history-filter": function (el) { ui.historyFilter = el.dataset.v; render(); },
     "meeting-kind": function (el) { data.settings.meetingKind = el.dataset.v; save(); render(); },
-    "meeting-lang": function (el) { data.settings.meetingLang = el.dataset.v; save(); fetchMeetings(el.dataset.v); render(); },
+    "meeting-lang": function (el) {
+      var cur = meetingLang();
+      menu(el, [{ label: t3("meetingLanguage") }].concat([["no", "Norsk"], ["en", "English"], ["de", "Deutsch"]].map(function (o) {
+        return { radio: cur === o[0], text: o[1], onClick: function () { data.settings.meetingLang = o[0]; save(); fetchMeetings(o[0]); render(); } };
+      })));
+    },
+    "part-toggle": function (el) { ui.openPart = ui.openPart === el.dataset.id ? null : el.dataset.id; render(); },
+    "sub-add": function () {
+      var c = openPart(); if (!c) return;
+      // Gets the time that's left of the part (at least a minute)
+      var left = c.seg.targetSeconds - sum(c.subs.map(function (x) { return x.targetSeconds; }));
+      setSubs(c.plan, c.seg, c.subs.concat([{ id: newId(), title: t3("subpartNew"), targetSeconds: left > 0 ? left : 60 }]));
+      render();
+      var ins = root.querySelectorAll('[data-in="sub-title"]'); if (ins.length) { ins[ins.length - 1].focus(); ins[ins.length - 1].select(); }
+    },
+    "sub-del": function (el) { var c = openPart(); if (!c) return; setSubs(c.plan, c.seg, c.subs.filter(function (_, i) { return i !== +el.dataset.i; })); render(); },
+    "sub-clear": function () { var c = openPart(); if (!c) return; setSubs(c.plan, c.seg, []); render(); },
+    "sub-speech": subSpeechDialog,
     "meeting-retry": function () { fetchMeetings(meetingLang(), true); render(); },
-    "week-prev": function () { ui.weekOffset--; render(); },
-    "week-next": function () { ui.weekOffset++; render(); },
-    "week-now": function () { ui.weekOffset = 0; render(); },
-    "meeting-start": function () { var m = chosenMeeting(); if (!m) return; ui.plan = m; ui.quick = false; ui.drill = null; startTimer(); },
+    "week-prev": function () { ui.weekOffset--; ui.openPart = null; render(); },
+    "week-next": function () { ui.weekOffset++; ui.openPart = null; render(); },
+    "week-now": function () { ui.weekOffset = 0; ui.openPart = null; render(); },
+    // The timer runs the meeting with every split part replaced by its sub-parts
+    "meeting-start": function () { var m = chosenMeeting(); if (!m) return; ui.plan = expandSubparts(m); ui.quick = false; ui.drill = null; startTimer(); },
     "meeting-history": function () {
       ui.plan = chosenMeeting() || (data.settings.meetingKind === "weekend" ? weekendPlan(meetingLang()) : { id: MIDWEEK_ID, title: t3("meetingMidweek"), segments: [], meeting: { kind: "midweek", buffer: MIDWEEK_BUFFER } });
       ui.expandedRun = null; go("history");
@@ -1587,8 +1728,25 @@
   });
   root.addEventListener("input", function (e) {
     var el = e.target, k = el.dataset && el.dataset.in;
-    if (!k || ui.screen !== "edit") return;
+    if (!k) return;
+    if (ui.screen === "meeting") {
+      // Sub-parts are saved as they're typed; only the sums are redrawn, so the field keeps the keyboard
+      var c = openPart(), x = c && c.subs[+el.dataset.i];
+      if (!x) return;
+      if (k === "sub-title") x.title = el.value;
+      else if (k === "sub-time") x.targetSeconds = parseTime(el.value);
+      setSubs(c.plan, c.seg, c.subs);
+      meetingTotals(c.plan);
+      return;
+    }
+    if (ui.screen !== "edit") return;
     var p = ui.plan;
+    if (k === "buffer") {
+      var b = parseTime(el.value);
+      if (b) p.buffer = b; else delete p.buffer;
+      var eb = document.getElementById("eq-buffer"); if (eb) eb.textContent = "= " + fmt(b);
+      return;
+    }
     if (k === "title") p.title = el.value;
     else if (k === "seg-title") p.segments[+el.dataset.i].title = el.value;
     else if (k === "seg-time") {

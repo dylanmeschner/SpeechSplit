@@ -10,6 +10,7 @@ import no.srrlsm.speechsplit.core.ReleaseInfo
 import no.srrlsm.speechsplit.jvm.UpdateClient
 import no.srrlsm.speechsplit.core.PracticeRun
 import no.srrlsm.speechsplit.core.SpeechPlan
+import no.srrlsm.speechsplit.core.SpeechSegment
 import no.srrlsm.speechsplit.core.SpeechFile
 import no.srrlsm.speechsplit.core.Strings
 import no.srrlsm.speechsplit.core.TimeStatus
@@ -56,6 +57,10 @@ class DesktopStore(private val dir: File = appDataDir()) : AppStore {
     override fun loadMeetingCache(language: String): String? = read(meetingFile(language))
     override fun saveMeetingCache(language: String, text: String) = write(meetingFile(language), text)
     override fun readMeetingProgram(text: String): MeetingProgram? = JsonCodec.meetingProgramFromJson(text)
+    private val subpartsFile = File(dir, "meeting-subparts.json")
+    override fun loadMeetingSubparts(): Map<String, List<SpeechSegment>> =
+        read(subpartsFile)?.let { JsonCodec.subpartsFromJson(it) } ?: emptyMap()
+    override fun saveMeetingSubparts(subparts: Map<String, List<SpeechSegment>>) = write(subpartsFile, JsonCodec.subpartsToJson(subparts))
     override fun hasSavedSettings(): Boolean = settingsFile.exists()
 
     override fun loadPlans(): List<SpeechPlan> =
@@ -162,6 +167,11 @@ class DesktopPlatform : PlatformServices {
     override val supportsWatchAlerts: Boolean = false
     override val supportsDnd: Boolean = false
     override val hasKeyboardShortcuts: Boolean = true
+    override val supportsSecondScreen: Boolean = true
+
+    /** More than one monitor connected right now. */
+    override fun hasSecondScreen(): Boolean =
+        runCatching { java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment().screenDevices.size > 1 }.getOrDefault(false)
 
     override fun watchAlert(status: TimeStatus, title: String, text: String, strings: Strings) {}
     override fun hasDndAccess(): Boolean = false

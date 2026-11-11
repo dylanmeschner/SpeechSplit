@@ -93,6 +93,49 @@ fun weekendMeeting(s: Strings3, title: String): SpeechPlan = SpeechPlan(
     meeting = MeetingInfo(MeetingKind.WEEKEND),
 )
 
+// --- Sub-parts ---------------------------------------------------------------------------
+// The chairman can split a part into sub-parts on the meeting screen (or bring in a saved
+// speech), for example when he has a part himself. They're kept per week and part.
+
+/** Where a part's sub-parts are kept: "2026-11-02/mw-p1" (midweek, by week) or "weekend/we-talk". */
+fun subpartsKey(meeting: MeetingInfo?, segmentId: String): String {
+    val week = if (meeting != null && meeting.kind == MeetingKind.MIDWEEK && meeting.week.isNotBlank()) meeting.week else "weekend"
+    return "$week/$segmentId"
+}
+
+/**
+ * The plan the timer runs: every part that has sub-parts is replaced by them, in order.
+ * If the sub-parts are shorter than the part, the rest goes to the last one, so the meeting
+ * keeps its length. If they're longer, they're used as they are.
+ */
+fun expandSubparts(plan: SpeechPlan, subpartsOf: (SpeechSegment) -> List<SpeechSegment>): SpeechPlan {
+    val out = ArrayList<SpeechSegment>()
+    for (seg in plan.segments) {
+        val subs = subpartsOf(seg)
+        if (subs.isEmpty()) {
+            out += seg
+            continue
+        }
+        val rest = (seg.targetSeconds - subs.sumOf { it.targetSeconds }).coerceAtLeast(0)
+        subs.forEachIndexed { i, sub ->
+            out += SpeechSegment(
+                id = seg.id + "/" + sub.id,
+                title = sub.title.trim().ifBlank { seg.title },
+                targetSeconds = sub.targetSeconds + if (i == subs.lastIndex) rest else 0,
+                group = seg.title,
+            )
+        }
+    }
+    return plan.copy(segments = out)
+}
+
+/** Drops sub-parts of midweek weeks that started before [oldestWeek] ("2026-09-07"). */
+fun pruneSubparts(all: Map<String, List<SpeechSegment>>, oldestWeek: String): Map<String, List<SpeechSegment>> =
+    all.filter { (key, list) ->
+        val week = key.substringBefore('/')
+        list.isNotEmpty() && (week == "weekend" || week >= oldestWeek)
+    }
+
 // --- Dates, without any date library (works on every platform) ------------------------
 
 /** Days since 1970-01-01 for a date (Howard Hinnant's days_from_civil). */
