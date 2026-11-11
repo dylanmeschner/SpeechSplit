@@ -3,6 +3,10 @@ package no.srrlsm.speechsplit.core
 fun Strings.summaryOf(plan: SpeechPlan): String =
     summary(plan.segments.size, formatTime(plan.totalTargetSeconds))
 
+/** "20:00", or "20:00 + 02:00" when there's spare time (a meeting's, or a speech's buffer). */
+fun planWithBuffer(targetSeconds: Int, bufferSeconds: Int): String =
+    if (bufferSeconds > 0) formatTime(targetSeconds) + " + " + formatTime(bufferSeconds) else formatTime(targetSeconds)
+
 /**
  * A plain-text report of one run, for sharing by message or email:
  *
@@ -17,7 +21,7 @@ fun buildRunReport(run: PracticeRun, s: Strings, dateText: String): String = bui
     appendLine("Speech Split · ${run.planTitle}")
     appendLine(dateText)
     appendLine(
-        "${s.reportTotal} ${formatTime(run.totalActualSeconds)} (${s.reportPlan(formatTime(run.totalTargetSeconds))})  ${formatDiff(run.diffSeconds)}"
+        "${s.reportTotal} ${formatTime(run.totalActualSeconds)} (${s.reportPlan(planWithBuffer(run.totalTargetSeconds, run.bufferSeconds))})  ${formatDiff(run.diffSeconds)}"
     )
     appendLine()
     run.segments.forEachIndexed { i, seg ->

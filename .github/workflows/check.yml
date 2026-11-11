@@ -1,0 +1,62 @@
+# Checks every push: the unit tests, that the Android and Windows apps still build,
+# and that the web version gives the same answers as the apps (the shared test cases).
+# A red cross next to a commit on GitHub means one of these failed; click it to see which.
+
+name: Check
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apps:
+    name: Apps (tests and build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Unit tests
+        run: ./gradlew :app:testDebugUnitTest --no-configuration-cache
+
+      - name: The Windows app compiles
+        run: ./gradlew :desktop:compileKotlin --no-configuration-cache
+
+      - name: The Android app compiles
+        run: ./gradlew :app:compileDebugKotlin --no-configuration-cache
+
+      - name: Keep the test report when something failed
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report
+          path: app/build/reports/tests
+
+  web:
+    name: Web version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: The scripts are valid
+        run: for f in docs/app/*.js; do node --check "$f"; done
+      - name: Shared test cases
+        run: |
+          npm install --no-save jsdom
+          node tools/vectors_web_test.js

@@ -48,7 +48,10 @@ fun buildSummary(run: PracticeRun, prev: PracticeRun?, tolerance: Int, s: String
     val praise = mutableListOf<String>()
     val total = run.diffSeconds
     val meeting = run.meeting != null
+    // A speech with spare time that ended inside it: on time, without having hit the second
+    val usedBuffer = if (meeting) 0 else run.bufferUsedSeconds
     when {
+        usedBuffer > 0 && total == 0 -> praise += s.praiseWithinBuffer(formatTime(usedBuffer))
         total == 0 -> praise += s.praisePerfect
         abs(total) <= maxOf(10, tolerance) -> praise += s.praiseTotalClose(formatTime(abs(total)))
         total < 0 && meeting -> praise += s.praiseUnder(formatTime(-total))

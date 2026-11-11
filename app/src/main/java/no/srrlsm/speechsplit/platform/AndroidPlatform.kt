@@ -62,6 +62,8 @@ class AndroidPlatform(context: Context) : PlatformServices {
     override fun formatDateTime(epochMs: Long): String =
         DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(epochMs))
 
+    override fun formatClock(epochMs: Long): String = DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(epochMs))
+
     // --- Vibration ------------------------------------------------------------
     private val vibrator: Vibrator? =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {

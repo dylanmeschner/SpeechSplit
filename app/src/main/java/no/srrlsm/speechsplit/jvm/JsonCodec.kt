@@ -45,6 +45,8 @@ object JsonCodec {
             plan.folderId?.let { put("folderId", it) }
         }
         put("title", plan.title)
+        // Spare time (buffer): part of the speech, so it's in a shared export too
+        if (plan.bufferSeconds > 0) put("buffer", plan.bufferSeconds)
         put("segments", JSONArray().apply {
             plan.segments.forEach { seg ->
                 val o = JSONObject().put("title", seg.title).put("target", seg.targetSeconds)
@@ -73,6 +75,7 @@ object JsonCodec {
             lastUsedAtEpochMs = obj.optLong("lastUsedAt", 0L).coerceAtLeast(0L),
             archived = obj.optBoolean("archived", false),
             folderId = obj.optString("folderId").ifBlank { null },
+            bufferSeconds = obj.optInt("buffer", 0).coerceAtLeast(0),
         )
     }
 
@@ -84,13 +87,20 @@ object JsonCodec {
         val o = JSONObject().put("app", "Speech Split").put("format", 1)
         if (runs.isNotEmpty()) o.put("id", plan.id)
         o.put("title", plan.title)
+        if (plan.bufferSeconds > 0) o.put("buffer", plan.bufferSeconds)
         o.put("segments", planToJson(plan, includeIds = runs.isNotEmpty()).getJSONArray("segments"))
         if (runs.isNotEmpty()) o.put("history", JSONArray().apply { runs.forEach { put(runToJson(it)) } })
         return o.toString(2) + "\n"
     }
 
     /** A .speechsplit library backup: every speech (archived ones too), the folders and all practice history. */
-    fun libraryFileText(plans: List<SpeechPlan>, runs: List<PracticeRun>, folders: List<Folder> = emptyList()): String =
+    fun libraryFileText(
+        plans: List<SpeechPlan>,
+        runs: List<PracticeRun>,
+        folders: List<Folder> = emptyList(),
+        subparts: Map<String, List<SpeechSegment>> = emptyMap(),
+        settings: AppSettings? = null,
+    ): String =
         JSONObject()
             .put("app", "Speech Split")
             .put("format", 1)
@@ -98,6 +108,14 @@ object JsonCodec {
             .put("folders", foldersToJsonArray(folders))
             .put("speeches", JSONArray().apply { plans.forEach { put(planToJson(it, includeIds = true)) } })
             .put("history", JSONArray().apply { runs.forEach { put(runToJson(it)) } })
+            .apply {
+                if (subparts.isNotEmpty()) put("subparts", JSONObject(subpartsToJson(subparts)))
+                // Only the choices a person makes, not what belongs to one device (version seen, introduction shown)
+                if (settings != null) put("settings", JSONObject(settingsToJson(settings)).apply {
+                    remove("tutorialSeen")
+                    remove("lastSeenVersion")
+                })
+            }
             .toString(2) + "\n"
 
     /** Reads any Speech Split file or export text. Null if it isn't one. */
@@ -112,7 +130,9 @@ object JsonCodec {
                 runCatching { planFromJson(arr.getJSONObject(i), fallbackTitle) }.getOrNull()
             }.distinctBy { it.id }
             val folders = o.optJSONArray("folders")?.let { foldersFromJsonArray(it) } ?: emptyList()
-            return SpeechFile(plans, runs, isLibrary = true, folders = folders)
+            val subparts = o.optJSONObject("subparts")?.let { subpartsFromJson(it.toString()) } ?: emptyMap()
+            val settings = o.optJSONObject("settings")?.let { runCatching { settingsFromJson(it.toString()) }.getOrNull() }
+            return SpeechFile(plans, runs, isLibrary = true, folders = folders, subparts = subparts, settings = settings)
         }
         val plan = runCatching { planFromJson(o, fallbackTitle) }.getOrNull() ?: return null
         return SpeechFile(listOf(plan), runs, isLibrary = false)
@@ -211,6 +231,7 @@ object JsonCodec {
         .put("runLive", s.runLive)
         .put("meetingKind", s.meetingKind.name)
         .put("meetingLanguage", s.meetingLanguage)
+        .put("secondScreen", s.secondScreen)
         .toString(2)
 
     fun settingsFromJson(text: String): AppSettings {
@@ -236,6 +257,7 @@ object JsonCodec {
             runLive = o.optBoolean("runLive", d.runLive),
             meetingKind = enumOrDefault(o.optString("meetingKind"), d.meetingKind),
             meetingLanguage = o.optString("meetingLanguage", d.meetingLanguage),
+            secondScreen = o.optBoolean("secondScreen", d.secondScreen),
         )
     }
 
@@ -256,6 +278,33 @@ object JsonCodec {
     fun foldersToJson(folders: List<Folder>): String = foldersToJsonArray(folders).toString()
 
     fun foldersFromJson(text: String): List<Folder> = runCatching { foldersFromJsonArray(JSONArray(text)) }.getOrDefault(emptyList())
+
+    // --- Sub-parts of meeting parts: { "2026-11-02/mw-p1": [ { id, title, target }, ... ] } ---
+    fun subpartsToJson(subparts: Map<String, List<SpeechSegment>>): String = JSONObject().apply {
+        subparts.forEach { (key, list) ->
+            put(key, JSONArray().apply {
+                list.forEach { put(JSONObject().put("id", it.id).put("title", it.title).put("target", it.targetSeconds)) }
+            })
+        }
+    }.toString()
+
+    fun subpartsFromJson(text: String): Map<String, List<SpeechSegment>> = runCatching {
+        val o = JSONObject(text)
+        val out = LinkedHashMap<String, List<SpeechSegment>>()
+        for (key in o.keys()) {
+            val arr = o.optJSONArray(key) ?: continue
+            val list = (0 until arr.length()).mapNotNull { i ->
+                val s = arr.optJSONObject(i) ?: return@mapNotNull null
+                SpeechSegment(
+                    id = s.optString("id").ifBlank { newId() },
+                    title = s.optString("title"),
+                    targetSeconds = s.optInt("target").coerceAtLeast(0),
+                )
+            }
+            if (list.isNotEmpty()) out[key] = list
+        }
+        out
+    }.getOrDefault(emptyMap())
 
     // --- Meeting programs (docs/meetings/<lang>.json) ---------------------------------
     fun meetingProgramFromJson(text: String): MeetingProgram? = runCatching {

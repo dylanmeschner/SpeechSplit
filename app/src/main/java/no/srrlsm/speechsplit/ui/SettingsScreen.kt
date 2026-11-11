@@ -111,6 +111,14 @@ fun SettingsScreen(app: AppController) {
                 },
                 onSelect = { v -> app.updateSettings { it.copy(celebrateTolerance = v) } },
             )
+            if (app.supportsSecondScreen) {
+                // Windows: the part's name and a big clock on a second screen
+                val s3 = LocalStrings3.current
+                SettingsDivider()
+                SwitchSetting(s3.secondScreenTitle, s3.secondScreenDesc, settings.secondScreen) { v ->
+                    app.updateSettings { it.copy(secondScreen = v) }
+                }
+            }
         }
 
         SettingsSection(s.sectionAlerts) {

@@ -52,9 +52,9 @@ S = {
         "de": "Programm konnte nicht geladen werden. Prüfe die Internetverbindung und versuche es erneut.",
     },
     "meetingNoLanguage": {
-        "en": "There's no program in this language yet. Pick another language below.",
-        "no": "Det finnes ikke noe program på dette språket ennå. Velg et annet språk nedenfor.",
-        "de": "In dieser Sprache gibt es noch kein Programm. Wähle unten eine andere Sprache.",
+        "en": "There's no program in this language yet. Pick another language at the top.",
+        "no": "Det finnes ikke noe program på dette språket ennå. Velg et annet språk øverst.",
+        "de": "In dieser Sprache gibt es noch kein Programm. Wähle oben eine andere Sprache.",
     },
     "meetingRetry": {"en": "Try again", "no": "Prøv igjen", "de": "Erneut versuchen"},
     "meetingLanguage": {"en": "Program language", "no": "Språk for programmet", "de": "Sprache des Programms"},
@@ -79,6 +79,66 @@ S = {
     "meetingEndedLate": {"en": "The meeting ran {0} over.", "no": "Møtet gikk {0} over tiden.", "de": "Die Versammlung ging {0} über die Zeit."},
     "meetingEndedOnTime": {"en": "The meeting ended right on time.", "no": "Møtet sluttet akkurat på tiden.", "de": "Die Versammlung endete genau pünktlich."},
     "meetingHistoryTitle": {"en": "Meeting history", "no": "Møtehistorikk", "de": "Versammlungsverlauf"},
+    "meetingEndsAt": {"en": "DONE AROUND {0}", "no": "FERDIG CA. KL. {0}", "de": "ENDE CA. {0} UHR"},
+
+    # --- Sub-parts of a meeting part (3.1) ----------------------------------------
+    "subpartsHint": {
+        "en": "Tap a part to split it into sub-parts, for example your own talk.",
+        "no": "Trykk på en del for å dele den opp i underdeler, for eksempel din egen tale.",
+        "de": "Tippe auf einen Teil, um ihn in Unterteile aufzuteilen, zum Beispiel deine eigene Aufgabe.",
+    },
+    "subpartsCount": {"en": ["1 sub-part", "{0} sub-parts"], "no": ["1 underdel", "{0} underdeler"], "de": ["1 Unterteil", "{0} Unterteile"]},
+    "subpartAdd": {"en": "Sub-part", "no": "Underdel", "de": "Unterteil"},
+    "subpartFromSpeech": {"en": "From a speech", "no": "Hent fra tale", "de": "Aus einer Rede"},
+    "subpartClear": {"en": "Remove all", "no": "Fjern alle", "de": "Alle entfernen"},
+    "subpartName": {"en": "Name", "no": "Navn", "de": "Name"},
+    "subpartTime": {"en": "Time", "no": "Tid", "de": "Zeit"},
+    "subpartNew": {"en": "New sub-part", "no": "Ny underdel", "de": "Neuer Unterteil"},
+    "subpartRemove": {"en": "Remove sub-part", "no": "Fjern underdelen", "de": "Unterteil entfernen"},
+    "subpartsSum": {"en": "Sub-parts: {0} of {1}", "no": "Underdeler: {0} av {1}", "de": "Unterteile: {0} von {1}"},
+    "subpartsLeft": {
+        "en": "The remaining {0} is added to the last sub-part.",
+        "no": "De siste {0} legges til den siste underdelen.",
+        "de": "Die restlichen {0} kommen zum letzten Unterteil.",
+    },
+    "subpartsOver": {
+        "en": "The sub-parts are {0} longer than the part.",
+        "no": "Underdelene er {0} lengre enn delen.",
+        "de": "Die Unterteile sind {0} länger als der Teil.",
+    },
+    "subpartPick": {
+        "en": "Pick the speech whose parts you want to use here.",
+        "no": "Velg talen du vil hente delene fra.",
+        "de": "Wähle die Rede, deren Teile du hier verwenden willst.",
+    },
+    "subpartNoSpeeches": {"en": "You have no saved speeches yet.", "no": "Du har ingen lagrede taler ennå.", "de": "Du hast noch keine gespeicherten Reden."},
+
+    # --- Spare time (buffer) for a speech (3.1) -----------------------------------
+    "bufferLabel": {"en": "Spare time (buffer)", "no": "Reservetid (buffer)", "de": "Reservezeit (Puffer)"},
+    "bufferHint": {
+        "en": "Optional. If a part runs over, the spare time is used first. The speech is only over time once it's used up.",
+        "no": "Valgfritt. Går en del over tiden, brukes reservetiden først. Talen er først over tiden når den er brukt opp.",
+        "de": "Optional. Läuft ein Teil über, wird zuerst die Reservezeit verbraucht. Die Rede ist erst über der Zeit, wenn sie aufgebraucht ist.",
+    },
+    "bufferPlus": {"en": "+ {0} spare time", "no": "+ {0} reservetid", "de": "+ {0} Reservezeit"},
+    "praiseWithinBuffer": {
+        "en": "You stayed within the spare time (used {0}).",
+        "no": "Du holdt deg innenfor reservetiden (brukte {0}).",
+        "de": "Du bist in der Reservezeit geblieben ({0} verbraucht).",
+    },
+
+    # --- Big clock on a second screen (3.1, Windows) ------------------------------
+    "secondScreenTitle": {"en": "Big clock on screen 2", "no": "Stor klokke på skjerm 2", "de": "Große Uhr auf Bildschirm 2"},
+    "secondScreenDesc": {
+        "en": "With a second screen connected, it shows the part's name and a big clock while the timer runs. This window stays as usual. Shortcut: S.",
+        "no": "Når en ekstra skjerm er koblet til, viser den navnet på delen og en stor klokke mens timeren går. Dette vinduet er som vanlig. Snarvei: S.",
+        "de": "Ist ein zweiter Bildschirm angeschlossen, zeigt er den Namen des Teils und eine große Uhr, während der Timer läuft. Dieses Fenster bleibt wie gewohnt. Kürzel: S.",
+    },
+    "secondScreenNone": {
+        "en": "No second screen found. Connect one and try again.",
+        "no": "Fant ingen skjerm 2. Koble til en skjerm og prøv igjen.",
+        "de": "Kein zweiter Bildschirm gefunden. Schließe einen an und versuche es erneut.",
+    },
 
     # --- Practice -------------------------------------------------------------
     "modePractice": {"en": "Practice", "no": "Øving", "de": "Übung"},
@@ -180,24 +240,18 @@ S = {
     },
     "whatsNewTitle": {"en": "New in version {0}", "no": "Nytt i versjon {0}", "de": "Neu in Version {0}"},
     "whatsNewItems": {
-        "en": "Meeting mode: follow the time of the midweek and weekend meeting, with this week's program loaded for you.\n"
-              "A summary after every speech: what went well, and where the time ran over.\n"
-              "Practice or real speech, and practise one part again and again.\n"
-              "Folders for your speeches.\n"
-              "An introduction for new users, a clear close button in every dialog, and Settings scroll from anywhere on the screen.\n"
-              "Importing PDF and Word documents is gone. Speech Split files still open as before.",
-        "no": "Møtemodus: følg tiden for midtukemøtet og søndagsmøtet, med ukens program lastet inn for deg.\n"
-              "Oppsummering etter hver tale: hva som gikk bra, og hvor tiden gikk over.\n"
-              "Øving eller ekte tale, og øv på én del om og om igjen.\n"
-              "Mapper for talene dine.\n"
-              "Veiledning for nye brukere, tydelig lukkeknapp i alle dialoger, og innstillingene kan scrolles fra hvor som helst på skjermen.\n"
-              "Import av PDF- og Word-dokumenter er fjernet. Speech Split-filer åpnes som før.",
-        "de": "Versammlungsmodus: die Zeit der Versammlung unter der Woche und am Wochenende im Blick, mit dem Programm der Woche schon geladen.\n"
-              "Eine Zusammenfassung nach jeder Rede: was gut lief und wo die Zeit überzogen wurde.\n"
-              "Übung oder echte Rede, und einen Teil immer wieder üben.\n"
-              "Ordner für deine Reden.\n"
-              "Eine Einführung für neue Nutzer, ein klarer Schließen-Knopf in jedem Dialog, und die Einstellungen lassen sich überall auf dem Bildschirm scrollen.\n"
-              "Der Import von PDF- und Word-Dokumenten entfällt. Speech-Split-Dateien öffnen sich wie bisher.",
+        "en": "Sub-parts in meeting mode: tap a part to split it up, or bring in one of your own speeches, so you can chair the meeting and give your talk at the same time.\n"
+              "Spare time (buffer) for a speech: set it when you edit the speech.\n"
+              "The program language in meeting mode is now a button at the top.\n"
+              "Windows: a big clock on a second screen while this window stays as usual.",
+        "no": "Underdeler i møtemodus: trykk på en del for å dele den opp, eller hent inn en av dine egne taler, så du kan lede møtet og holde talen din samtidig.\n"
+              "Reservetid (buffer) for en tale: du setter den når du redigerer talen.\n"
+              "Språket for programmet i møtemodus er nå en knapp øverst.\n"
+              "Windows: stor klokke på en ekstra skjerm, mens dette vinduet er som vanlig.",
+        "de": "Unterteile im Versammlungsmodus: Tippe auf einen Teil, um ihn aufzuteilen, oder hole eine deiner eigenen Reden dazu. So kannst du die Versammlung leiten und zugleich deine Aufgabe halten.\n"
+              "Reservezeit (Puffer) für eine Rede: Du stellst sie beim Bearbeiten der Rede ein.\n"
+              "Die Sprache des Programms im Versammlungsmodus ist jetzt ein Knopf oben.\n"
+              "Windows: eine große Uhr auf einem zweiten Bildschirm, während dieses Fenster wie gewohnt bleibt.",
     },
     "allPatchNotes": {"en": "All patch notes", "no": "Alle patch notes", "de": "Alle Versionshinweise"},
     "ok": {"en": "OK", "no": "OK", "de": "OK"},

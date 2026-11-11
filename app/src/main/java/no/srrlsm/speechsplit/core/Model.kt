@@ -23,7 +23,12 @@ data class SpeechSegment(
     val id: String = newId(),
     val title: String = "",
     val targetSeconds: Int = 0,
-)
+    /** For a sub-part of a meeting part: the title of the part it belongs to. Empty otherwise. */
+    val group: String = "",
+) {
+    /** The title for reports and the history: "1. Part · Introduction" for a sub-part. */
+    val fullTitle: String get() = if (group.isBlank()) title else "$group · $title"
+}
 
 data class SpeechPlan(
     val id: String = newId(),
@@ -41,11 +46,19 @@ data class SpeechPlan(
     val meeting: MeetingInfo? = null,
     /** "Practise one part": a one-segment copy of a speech's part, run again and again. Not saved. */
     val isDrill: Boolean = false,
+    /**
+     * Spare time (buffer) for a speech, set in the editor. Parts that run over use it up first;
+     * the speech is only over time once it's gone. A meeting has its own in [MeetingInfo].
+     */
+    val bufferSeconds: Int = 0,
 ) {
     val totalTargetSeconds: Int get() = segments.sumOf { it.targetSeconds }
 
-    /** What the run is measured against at the end: the parts, plus a meeting's spare minutes. */
-    val totalPlannedSeconds: Int get() = totalTargetSeconds + (meeting?.bufferSeconds ?: 0)
+    /** The spare time that applies: the meeting's, or the speech's own. */
+    val spareSeconds: Int get() = meeting?.bufferSeconds ?: bufferSeconds
+
+    /** What the run is measured against at the end: the parts, plus the spare time. */
+    val totalPlannedSeconds: Int get() = totalTargetSeconds + spareSeconds
 
     /** For "last used" sorting: a new speech counts as used when it was created. */
     val recentActivityEpochMs: Long get() = maxOf(lastUsedAtEpochMs, createdAtEpochMs)
@@ -96,13 +109,31 @@ data class PracticeRun(
     val live: Boolean = false,
     /** Set for a meeting's run. */
     val meeting: MeetingKind? = null,
-    /** A meeting's spare minutes: counted as planned time at the end. */
+    /** The spare time (buffer) the meeting or speech had. */
     val bufferSeconds: Int = 0,
 ) {
     val totalTargetSeconds: Int get() = segments.sumOf { it.targetSeconds }
     val totalActualSeconds: Int get() = segments.sumOf { it.actualSeconds }
-    /** Over (+) or under (-) the plan. A meeting is only over once its spare minutes are used up. */
-    val diffSeconds: Int get() = totalActualSeconds - totalTargetSeconds - bufferSeconds
+
+    /**
+     * Over (+) or under (-) the plan.
+     * A meeting is measured against its whole length: it's only over once its spare minutes are used up.
+     * A speech with spare time is on time (0) anywhere inside it, under when it ends before the
+     * planned time, and over only by what went beyond the spare time.
+     */
+    val diffSeconds: Int
+        get() {
+            val raw = totalActualSeconds - totalTargetSeconds
+            return when {
+                meeting != null -> raw - bufferSeconds
+                raw <= 0 -> raw
+                else -> (raw - bufferSeconds).coerceAtLeast(0)
+            }
+        }
+
+    /** How much of the spare time a speech used (0 when it has none, or ended before the planned time). */
+    val bufferUsedSeconds: Int
+        get() = (totalActualSeconds - totalTargetSeconds).coerceIn(0, bufferSeconds.coerceAtLeast(0))
 }
 
 // ============================================================================
@@ -145,6 +176,8 @@ data class AppSettings(
     val meetingKind: MeetingKind = MeetingKind.MIDWEEK,
     /** Meeting mode: language of the program ("no", "en", "de"), or "" for the app's language. */
     val meetingLanguage: String = "",
+    /** Windows: show the part's name and a big clock on a second screen while the timer runs. */
+    val secondScreen: Boolean = false,
 )
 
 val WarningOptions = listOf(0, 5, 10, 15, 20)

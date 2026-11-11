@@ -29,6 +29,18 @@ interface AppStore {
     fun readSpeechFile(text: String, fallbackTitle: String): SpeechFile? =
         importPlan(text, fallbackTitle)?.let { SpeechFile(listOf(it), emptyList(), isLibrary = false) }
 
+    /**
+     * The library backup with everything in it: also the sub-parts of meeting parts and the settings.
+     * A store that doesn't override this writes the backup without them.
+     */
+    fun exportLibraryFile(
+        plans: List<SpeechPlan>,
+        runs: List<PracticeRun>,
+        folders: List<Folder>,
+        subparts: Map<String, List<SpeechSegment>>,
+        settings: AppSettings?,
+    ): String = exportLibraryFile(plans, runs, folders)
+
     /** Writes anything still waiting to be saved. Called when the app closes. */
     fun flush() {}
 
@@ -42,6 +54,10 @@ interface AppStore {
     /** Reads a meeting program file (docs/meetings/<lang>.json). Null if it isn't one. */
     fun readMeetingProgram(text: String): MeetingProgram? = null
 
+    /** Sub-parts of meeting parts, by [subpartsKey]. */
+    fun loadMeetingSubparts(): Map<String, List<SpeechSegment>> = emptyMap()
+    fun saveMeetingSubparts(subparts: Map<String, List<SpeechSegment>>) {}
+
     /** True if settings were ever saved: the app was used before (so it's an update, not a first start). */
     fun hasSavedSettings(): Boolean = false
 }
@@ -52,6 +68,9 @@ data class SpeechFile(
     val runs: List<PracticeRun>,
     val isLibrary: Boolean,
     val folders: List<Folder> = emptyList(),
+    /** A library backup can also hold the sub-parts of meeting parts and the settings (3.1). */
+    val subparts: Map<String, List<SpeechSegment>> = emptyMap(),
+    val settings: AppSettings? = null,
 )
 
 /** What "Export" puts in the file. */
@@ -118,6 +137,9 @@ interface PlatformServices {
     /** Local, human-friendly date and time, e.g. "05.10.2026 18:30". */
     fun formatDateTime(epochMs: Long): String
 
+    /** Local time of day, e.g. "20:45", for when a meeting will be done. */
+    fun formatClock(epochMs: Long): String = formatDateTime(epochMs).takeLast(5)
+
     val canVibrate: Boolean
     fun vibrate(long: Boolean)
 
@@ -129,6 +151,12 @@ interface PlatformServices {
     val supportsDnd: Boolean get() = true
     /** Keyboard / presentation-clicker shortcuts (desktop). */
     val hasKeyboardShortcuts: Boolean get() = false
+
+    /** Can show a big clock in its own window on a second screen (desktop). */
+    val supportsSecondScreen: Boolean get() = false
+
+    /** True when a second screen is connected right now. */
+    fun hasSecondScreen(): Boolean = false
 
     /** Do Not Disturb (Focus on iPad / Windows). */
     fun hasDndAccess(): Boolean

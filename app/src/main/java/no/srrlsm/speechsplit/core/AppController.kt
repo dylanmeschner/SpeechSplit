@@ -177,6 +177,17 @@ class AppController(
     val supportsWatchAlerts: Boolean get() = platform.supportsWatchAlerts
     val supportsDnd: Boolean get() = platform.supportsDnd
     val hasKeyboardShortcuts: Boolean get() = platform.hasKeyboardShortcuts
+    val supportsSecondScreen: Boolean get() = platform.supportsSecondScreen
+
+    /** The big clock on a second screen (desktop): on/off. Says so when there's no second screen to show it on. */
+    fun toggleSecondScreen() {
+        val on = !settings.secondScreen
+        if (on && !platform.hasSecondScreen()) {
+            message = strings3.secondScreenNone
+            return
+        }
+        updateSettings { it.copy(secondScreen = on) }
+    }
 
     fun updateSettings(transform: (AppSettings) -> AppSettings) {
         settings = transform(settings)
@@ -391,7 +402,7 @@ class AppController(
     fun exportFile(plan: SpeechPlan?, scope: ExportScope): Pair<String, String> = when {
         scope == ExportScope.LIBRARY || plan == null ->
             "Speech Split ${isoDate(platform.epochMs())}.$SPEECH_FILE_EXTENSION" to
-                store.exportLibraryFile(speechPlans.toList(), runs, folders)
+                store.exportLibraryFile(speechPlans.toList(), runs, folders, meetingSubparts, settings)
         scope == ExportScope.SPEECH_WITH_HISTORY -> speechFileName(plan.title) to store.exportPlanFile(plan, runsFor(plan.id))
         else -> speechFileName(plan.title) to store.exportPlanFile(plan)
     }
@@ -469,6 +480,19 @@ class AppController(
             val ids = file.plans.map { it.id }.toSet()
             runs = capRuns(file.runs.filter { it.planId in ids || isMeeting(it) })
             count = file.plans.size
+            meetingSubparts = file.subparts
+            // The settings in the backup: the choices only, and nothing this device can't do
+            file.settings?.let { b ->
+                updateSettings {
+                    it.copy(
+                        language = b.language, themeMode = b.themeMode, celebrateTolerance = b.celebrateTolerance,
+                        warningPercent = b.warningPercent, clockMode = b.clockMode, showAdjusted = b.showAdjusted,
+                        flashAlerts = b.flashAlerts, vibrateAlerts = b.vibrateAlerts && platform.canVibrate,
+                        keepScreenOn = b.keepScreenOn, lecternMode = b.lecternMode, speechSort = b.speechSort,
+                        runLive = b.runLive, meetingKind = b.meetingKind, meetingLanguage = b.meetingLanguage,
+                    )
+                }
+            }
         } else {
             val have = speechPlans.map { it.id }.toSet()
             val added = file.plans.filter { it.id !in have }
@@ -479,7 +503,10 @@ class AppController(
             val haveRuns = runs.map { it.id }.toSet()
             runs = capRuns(runs + file.runs.filter { it.id !in haveRuns && (it.planId in ids || isMeeting(it)) })
             count = added.size
+            // Sub-parts for parts that have none here; what's here is kept
+            meetingSubparts = file.subparts + meetingSubparts
         }
+        store.saveMeetingSubparts(meetingSubparts)
         store.saveFolders(folders)
         store.savePlans(speechPlans)
         store.saveRuns(runs)
@@ -531,11 +558,12 @@ class AppController(
             planTitle = plan.title,
             finishedAtEpochMs = platform.epochMs(),
             segments = plan.segments.mapIndexed { i, seg ->
-                RunSegment(seg.id, seg.title, seg.targetSeconds, secs.getOrElse(i) { 0 })
+                RunSegment(seg.id, seg.fullTitle, seg.targetSeconds, secs.getOrElse(i) { 0 })
             },
             live = plan.meeting != null || settings.runLive,
             meeting = plan.meeting?.kind,
-            bufferSeconds = plan.meeting?.bufferSeconds ?: 0,
+            // A quick timer and a one-part drill have no spare time
+            bufferSeconds = plan.spareSeconds,
         )
     }
 
@@ -787,12 +815,64 @@ class AppController(
         return midweekMeeting(week, program3, strings3.meetingMidweekTitle(weekLabel(week.start, languageCode)))
     }
 
+    // --- Sub-parts of a meeting part ----------------------------------------------------
+    // Kept per week and part (see subpartsKey), so the meeting can be prepared in advance.
+
+    /** All sub-parts, by [subpartsKey]. */
+    var meetingSubparts by mutableStateOf(store.loadMeetingSubparts())
+        private set
+
+    fun subpartsOf(plan: SpeechPlan, segment: SpeechSegment): List<SpeechSegment> =
+        meetingSubparts[subpartsKey(plan.meeting, segment.id)].orEmpty()
+
+    /** Replaces a part's sub-parts (an empty list removes them) and saves. */
+    fun setSubparts(plan: SpeechPlan, segment: SpeechSegment, subparts: List<SpeechSegment>) {
+        val key = subpartsKey(plan.meeting, segment.id)
+        val all = if (subparts.isEmpty()) meetingSubparts - key else meetingSubparts + (key to subparts)
+        // Old weeks are dropped along the way, so this never grows without end
+        val oldest = mondayOf(platform.localDateIso(platform.epochMs()), -8)
+        meetingSubparts = pruneSubparts(all, oldest)
+        store.saveMeetingSubparts(meetingSubparts)
+    }
+
+    /** A new sub-part at the end, with the time that's left of the part (at least a minute). */
+    fun addSubpart(plan: SpeechPlan, segment: SpeechSegment) {
+        val have = subpartsOf(plan, segment)
+        val left = segment.targetSeconds - have.sumOf { it.targetSeconds }
+        setSubparts(plan, segment, have + SpeechSegment(title = strings3.subpartNew, targetSeconds = if (left > 0) left else 60))
+    }
+
+    fun updateSubpart(plan: SpeechPlan, segment: SpeechSegment, subpart: SpeechSegment) =
+        setSubparts(plan, segment, subpartsOf(plan, segment).map { if (it.id == subpart.id) subpart else it })
+
+    fun removeSubpart(plan: SpeechPlan, segment: SpeechSegment, subpartId: String) =
+        setSubparts(plan, segment, subpartsOf(plan, segment).filterNot { it.id == subpartId })
+
+    /** The parts of a saved speech become the sub-parts (as copies: the speech isn't changed). */
+    fun subpartsFromSpeech(plan: SpeechPlan, segment: SpeechSegment, speech: SpeechPlan) =
+        setSubparts(plan, segment, speech.segments.map { SpeechSegment(title = it.title, targetSeconds = it.targetSeconds) })
+
     fun startMeeting() {
-        val plan = chosenMeeting() ?: return
+        val chosen = chosenMeeting() ?: return
+        val plan = expandSubparts(chosen) { subpartsOf(chosen, it) }
         activePlan = plan
         isQuickTimer = false
         drill = null
         startTimer()
+    }
+
+    /**
+     * When the running meeting will be done if the rest goes to plan: now, plus what's left of
+     * this part, plus the parts still to come. Null when no meeting is being timed.
+     */
+    fun meetingEndClock(): String? {
+        val plan = activePlan?.takeIf { it.meeting != null } ?: return null
+        if (!engine.isActive || engine.isFinished) return null
+        val i = engine.currentIndex
+        val current = plan.segments.getOrNull(i) ?: return null
+        val left = (current.targetSeconds - engine.elapsedSeconds(i)).coerceAtLeast(0) +
+            plan.segments.drop(i + 1).sumOf { it.targetSeconds }
+        return platform.formatClock(platform.epochMs() + left * 1000L)
     }
 
     /** History of the meeting kind picked on the meeting screen. */

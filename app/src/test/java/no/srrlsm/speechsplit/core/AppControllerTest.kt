@@ -210,6 +210,80 @@ class AppControllerTest {
     }
 
     @Test
+    fun speechBufferIsUsedBeforeTheSpeechIsOver() {
+        fun run(actual: Int) = PracticeRun(planId = "p", planTitle = "T", finishedAtEpochMs = 1,
+            segments = listOf(RunSegment("a", "A", 600, actual)), bufferSeconds = 120)
+        assertEquals(-30, run(570).diffSeconds)   // ended before the planned time: under
+        assertEquals(0, run(600).diffSeconds)
+        assertEquals(0, run(690).diffSeconds)     // inside the spare time: on time
+        assertEquals(90, run(690).bufferUsedSeconds)
+        assertEquals(0, run(720).diffSeconds)
+        assertEquals(45, run(765).diffSeconds)    // only what went beyond the spare time
+        assertEquals(listOf(EnglishStrings3.praiseWithinBuffer("01:30")), buildSummary(run(690), null, 0, EnglishStrings3).praise)
+        // Without spare time nothing changes
+        assertEquals(90, run(690).copy(bufferSeconds = 0).diffSeconds)
+    }
+
+    @Test
+    fun speechBufferIsSavedWithTheRun() {
+        val p = FakePlatform()
+        val speech = SpeechPlan(title = "Talk", segments = listOf(SpeechSegment(title = "A", targetSeconds = 60)), bufferSeconds = 30)
+        val app = AppController(MemoryStore(listOf(speech)), p, CoroutineScope(Job()))
+        assertEquals(90, app.speechPlans.first().totalPlannedSeconds)
+        app.openPlan(app.speechPlans.first())
+        app.startTimer()
+        p.mono += 75_000L
+        app.nextSegment()
+        val run = app.runs.single()
+        assertEquals(30, run.bufferSeconds)
+        assertEquals(0, run.diffSeconds)
+    }
+
+    @Test
+    fun subpartsReplaceTheirPartWhenTheMeetingStarts() {
+        val meeting = weekendMeeting(EnglishStrings3, "Weekend")
+        val talk = meeting.segments[1] // 30 minutes
+        val subs = listOf(SpeechSegment("s1", "Intro", 120), SpeechSegment("s2", "", 600))
+        val run = expandSubparts(meeting) { if (it.id == talk.id) subs else emptyList() }
+        assertEquals(6, run.segments.size)
+        assertEquals(listOf("we-talk/s1", "we-talk/s2"), run.segments.subList(1, 3).map { it.id })
+        assertEquals("Intro", run.segments[1].title)
+        assertEquals(talk.title, run.segments[2].title)             // no name: the part's own
+        assertEquals(talk.title + " · Intro", run.segments[1].fullTitle)
+        assertEquals(30 * 60 - 120, run.segments[2].targetSeconds)  // the rest goes to the last one
+        assertEquals(meeting.totalPlannedSeconds, run.totalPlannedSeconds)
+        // Longer than the part: used as they are
+        val long = expandSubparts(meeting) { if (it.id == talk.id) listOf(SpeechSegment("s1", "All", 31 * 60)) else emptyList() }
+        assertEquals(meeting.totalPlannedSeconds + 60, long.totalPlannedSeconds)
+        assertEquals("weekend/we-talk", subpartsKey(meeting.meeting, "we-talk"))
+        assertEquals("2026-11-02/mw-p1", subpartsKey(MeetingInfo(MeetingKind.MIDWEEK, 300, "2026-11-02"), "mw-p1"))
+        val kept = pruneSubparts(mapOf("2026-08-03/mw-p1" to subs, "2026-11-02/mw-p1" to subs, "weekend/we-talk" to subs, "2026-11-09/mw-p2" to emptyList()), "2026-09-07")
+        assertEquals(setOf("2026-11-02/mw-p1", "weekend/we-talk"), kept.keys)
+    }
+
+    @Test
+    fun subpartsFromASpeechRunInsideTheMeeting() {
+        val p = FakePlatform()
+        val speech = SpeechPlan(title = "My talk", segments = listOf(
+            SpeechSegment(title = "Intro", targetSeconds = 300), SpeechSegment(title = "Main", targetSeconds = 1200)))
+        val app = AppController(MemoryStore(listOf(speech)), p, CoroutineScope(Job()))
+        app.setMeetingKind(MeetingKind.WEEKEND)
+        val meeting = app.chosenMeeting()!!
+        val talk = meeting.segments[1]
+        app.subpartsFromSpeech(meeting, talk, app.speechPlans.first())
+        app.addSubpart(meeting, talk)                                  // gets the 5 minutes that are left
+        assertEquals(listOf(300, 1200, 300), app.subpartsOf(meeting, talk).map { it.targetSeconds })
+        app.removeSubpart(meeting, talk, app.subpartsOf(meeting, talk).last().id)
+        app.startMeeting()
+        assertEquals(listOf("Intro", "Main"), app.activePlan!!.segments.subList(1, 3).map { it.title })
+        assertEquals(1500, app.activePlan!!.segments[2].targetSeconds) // 20 min + the 5 that were left
+        assertEquals(6, app.engine.segmentCount)
+        app.stopTimer()
+        app.setSubparts(meeting, talk, emptyList())
+        assertTrue(app.meetingSubparts.isEmpty())
+    }
+
+    @Test
     fun datesAndWeeks() {
         assertEquals("2026-11-02", mondayOf("2026-11-04"))
         assertEquals("2026-11-02", mondayOf("2026-11-02"))

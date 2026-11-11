@@ -26,6 +26,7 @@ import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowPosition
@@ -36,6 +37,7 @@ import no.srrlsm.speechsplit.core.AppController
 import no.srrlsm.speechsplit.core.AppScreen
 import no.srrlsm.speechsplit.core.ThemeMode
 import no.srrlsm.speechsplit.ui.LocalUiActions
+import no.srrlsm.speechsplit.ui.SecondScreenClock
 import no.srrlsm.speechsplit.ui.SpeechSplitApp
 import no.srrlsm.speechsplit.ui.UiActions
 import no.srrlsm.speechsplit.ui.theme.AppTheme
@@ -100,6 +102,8 @@ private fun runApp() = application {
         height = (screen?.height?.let { minOf(800, it - 60) } ?: 800).coerceAtLeast(560).dp,
         position = WindowPosition.Aligned(Alignment.Center),
     )
+    // The main window itself, so the big clock can go on the screen it is NOT on
+    var mainWindow by remember { mutableStateOf<java.awt.Window?>(null) }
 
     Window(
         onCloseRequest = {
@@ -111,7 +115,10 @@ private fun runApp() = application {
         state = windowState,
         onPreviewKeyEvent = keys::handle,
     ) {
-        LaunchedEffect(Unit) { window.minimumSize = Dimension(320, 480) }
+        LaunchedEffect(Unit) {
+            window.minimumSize = Dimension(320, 480)
+            mainWindow = window
+        }
 
         val dark = when (app.settings.themeMode) {
             ThemeMode.SYSTEM -> isSystemInDarkTheme()
@@ -167,10 +174,53 @@ private fun runApp() = application {
             }
         }
     }
+
+    // Big clock on a second screen: only while the timer is open, and only if a second screen is there
+    if (app.settings.secondScreen && app.currentScreen == AppScreen.TIMER && app.activePlan != null) {
+        SecondScreenWindow(app, mainWindow, onClose = { app.updateSettings { it.copy(secondScreen = false) } })
+    }
+}
+
+/** The bounds of a screen other than the one the main window is on, or null when there's only one. */
+private fun otherScreenBounds(main: java.awt.Window?): java.awt.Rectangle? = runCatching {
+    val screens = java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment().screenDevices
+    if (screens.size < 2) return@runCatching null
+    val mine = main?.graphicsConfiguration?.device
+    (screens.firstOrNull { it != mine } ?: screens.last()).defaultConfiguration.bounds
+}.getOrNull()
+
+/**
+ * A borderless window that fills the other screen with the part's name and a big clock.
+ * It never takes the keyboard, so Space, the arrow keys and a presentation clicker keep
+ * working in the main window. Always dark, like the big-clock mode.
+ */
+@Composable
+private fun SecondScreenWindow(app: AppController, main: java.awt.Window?, onClose: () -> Unit) {
+    val bounds = remember(main) { otherScreenBounds(main) } ?: return
+    Window(
+        onCloseRequest = onClose,
+        title = "Speech Split",
+        icon = remember { loadIcon() },
+        state = rememberWindowState(
+            position = WindowPosition(bounds.x.dp, bounds.y.dp),
+            size = DpSize(bounds.width.dp, bounds.height.dp),
+        ),
+        undecorated = true,
+        resizable = false,
+        focusable = false,
+        alwaysOnTop = true,
+    ) {
+        // Exactly the other screen, also when the two screens have different scaling
+        LaunchedEffect(bounds) { window.bounds = bounds }
+        SpeechSplitTheme(darkTheme = true) {
+            SecondScreenClock(app)
+        }
+    }
 }
 
 /**
- * Space = pause/resume, Right/Page Down/Enter = next, Left/Page Up/Backspace = undo, F = big clock.
+ * Space = pause/resume, Right/Page Down/Enter = next, Left/Page Up/Backspace = undo, F = big clock,
+ * S = big clock on a second screen.
  * Presentation clickers send Page Down / Page Up, so they work out of the box.
  * Only active on the timer screen, so typing in the editor is never affected.
  */
@@ -189,6 +239,7 @@ private class KeyHandler(private val app: AppController) {
             }
             Key.DirectionLeft, Key.PageUp, Key.Backspace -> app.previousSegment()
             Key.F -> if (!app.engine.isFinished) app.updateSettings { it.copy(lecternMode = !it.lecternMode) }
+            Key.S -> app.toggleSecondScreen()
             else -> return false
         }
         return true
