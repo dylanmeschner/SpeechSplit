@@ -1039,8 +1039,13 @@
     syncWakeLock();
     if (rerender && ui.screen === "timer") render();
   }
+  var shownSecond = -1; // the total second the timer screen last drew
   function tick() {
     tickNow();
+    // Every clock shows whole seconds: only redraw (and check the alerts) when the total passes one
+    var sec = totalElapsed();
+    if (sec === shownSecond) return;
+    shownSecond = sec;
     checkAlerts();
     if (ui.screen === "timer") updateTimer();
   }

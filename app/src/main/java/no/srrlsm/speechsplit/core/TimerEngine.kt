@@ -73,11 +73,20 @@ class TimerEngine(private val clockMs: () -> Long) {
         return out
     }
 
-    /** How long until the next whole second ticks over, so the display can flip exactly on time. */
-    fun msToNextSecond(): Long = 1000 - (totalMs() % 1000)
+    /** The running total straight from the clock (not from the last tick). */
+    private fun totalMsAt(clock: Long): Long =
+        recordedMs.sum() + if (isRunning) (clock - runStartedAt).coerceAtLeast(0) else 0L
 
+    /** How long until the next whole second ticks over, so the display can flip exactly on time. */
+    fun msToNextSecond(): Long = 1000 - (totalMsAt(clockMs()) % 1000)
+
+    /**
+     * Called often while running. Every clock on screen shows whole seconds, so the screens are only
+     * told (through [now]) when the total passes a whole second: they redraw once a second, not on every call.
+     */
     fun tick() {
-        now = clockMs()
+        val t = clockMs()
+        if (!isRunning || totalMsAt(t) / 1000 != totalMs() / 1000) now = t
     }
 
     fun start(segments: Int) {

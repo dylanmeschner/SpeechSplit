@@ -196,7 +196,7 @@ class AppControllerTest {
     fun meetingRunCountsSpareTime() {
         val p = FakePlatform()
         val app = AppController(MemoryStore(), p, CoroutineScope(Job()))
-        app.setMeetingKind(MeetingKind.WEEKEND)
+        app.meetings.setKind(MeetingKind.WEEKEND)
         app.startMeeting()
         assertEquals(AppScreen.TIMER, app.currentScreen)
         for (secs in listOf(300, 1800, 300, 3600, 300)) { p.mono += secs * 1000L; app.nextSegment() }
@@ -267,20 +267,20 @@ class AppControllerTest {
         val speech = SpeechPlan(title = "My talk", segments = listOf(
             SpeechSegment(title = "Intro", targetSeconds = 300), SpeechSegment(title = "Main", targetSeconds = 1200)))
         val app = AppController(MemoryStore(listOf(speech)), p, CoroutineScope(Job()))
-        app.setMeetingKind(MeetingKind.WEEKEND)
-        val meeting = app.chosenMeeting()!!
+        app.meetings.setKind(MeetingKind.WEEKEND)
+        val meeting = app.meetings.chosen()!!
         val talk = meeting.segments[1]
-        app.subpartsFromSpeech(meeting, talk, app.speechPlans.first())
-        app.addSubpart(meeting, talk)                                  // gets the 5 minutes that are left
-        assertEquals(listOf(300, 1200, 300), app.subpartsOf(meeting, talk).map { it.targetSeconds })
-        app.removeSubpart(meeting, talk, app.subpartsOf(meeting, talk).last().id)
+        app.meetings.subpartsFromSpeech(meeting, talk, app.speechPlans.first())
+        app.meetings.addSubpart(meeting, talk)                                  // gets the 5 minutes that are left
+        assertEquals(listOf(300, 1200, 300), app.meetings.subpartsOf(meeting, talk).map { it.targetSeconds })
+        app.meetings.removeSubpart(meeting, talk, app.meetings.subpartsOf(meeting, talk).last().id)
         app.startMeeting()
         assertEquals(listOf("Intro", "Main"), app.activePlan!!.segments.subList(1, 3).map { it.title })
         assertEquals(1500, app.activePlan!!.segments[2].targetSeconds) // 20 min + the 5 that were left
         assertEquals(6, app.engine.segmentCount)
         app.stopTimer()
-        app.setSubparts(meeting, talk, emptyList())
-        assertTrue(app.meetingSubparts.isEmpty())
+        app.meetings.setSubparts(meeting, talk, emptyList())
+        assertTrue(app.meetings.subparts.isEmpty())
     }
 
     @Test

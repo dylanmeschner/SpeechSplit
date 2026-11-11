@@ -53,10 +53,10 @@ fun MeetingScreen(app: AppController) {
     val s3 = LocalStrings3.current
     val c = AppTheme.colors
     val kind = app.settings.meetingKind
-    val lang = app.meetingLanguage
-    val load = app.meetingLoad[lang] ?: MeetingLoad.IDLE
-    val haveSaved = app.meetingProgram(lang) != null
-    val plan = app.chosenMeeting()
+    val lang = app.meetings.language
+    val load = app.meetings.loadState[lang] ?: MeetingLoad.IDLE
+    val haveSaved = app.meetings.program(lang) != null
+    val plan = app.meetings.chosen()
     val runs = app.runsFor(if (kind == MeetingKind.WEEKEND) WEEKEND_MEETING_ID else MIDWEEK_MEETING_ID).size
     // The part that's folded out (one at a time), and the part "From a speech" is picking for
     var expandedId by remember { mutableStateOf<String?>(null) }
@@ -70,7 +70,7 @@ fun MeetingScreen(app: AppController) {
             }
             Text(s3.meetingMode, fontSize = 24.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
             // The language of the program, up here where it's easy to find
-            ProgramLanguageButton(selected = lang, onSelect = { app.setMeetingLanguage(it) })
+            ProgramLanguageButton(selected = lang, onSelect = { app.meetings.setLanguage(it) })
         }
         Column(
             Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 4.dp),
@@ -79,33 +79,33 @@ fun MeetingScreen(app: AppController) {
             SegmentedChoice(
                 options = listOf(MeetingKind.MIDWEEK to s3.meetingMidweek, MeetingKind.WEEKEND to s3.meetingWeekend),
                 selected = kind,
-                onSelect = { app.setMeetingKind(it) },
+                onSelect = { app.meetings.setKind(it) },
                 modifier = Modifier.fillMaxWidth(),
             )
 
             if (kind == MeetingKind.MIDWEEK) {
                 // Week picker: this week by default, the arrows go back and forth
-                val start = app.meetingWeekStart
+                val start = app.meetings.weekStart
                 val week = plan?.meeting
                 Card(Modifier.fillMaxWidth().padding(top = 14.dp)) {
                     Row(Modifier.padding(horizontal = 4.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = { app.changeMeetingWeek(-1) }) {
+                        IconButton(onClick = { app.meetings.changeWeek(-1) }) {
                             Icon(Icons.Default.ChevronLeft, contentDescription = s3.meetingPrevWeek)
                         }
                         Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(weekLabel(start, app.languageCode), fontWeight = FontWeight.Bold, fontSize = 17.sp, textAlign = TextAlign.Center)
                             val sub = listOfNotNull(
                                 week?.reading?.takeIf { it.isNotBlank() },
-                                s3.meetingThisWeek.takeIf { app.meetingWeekOffset == 0 },
+                                s3.meetingThisWeek.takeIf { app.meetings.weekOffset == 0 },
                             ).joinToString(" · ")
                             if (sub.isNotBlank()) Text(sub, fontSize = 13.sp, color = c.textSub, textAlign = TextAlign.Center)
-                            if (app.meetingWeekOffset != 0) {
-                                TextButton(onClick = { app.changeMeetingWeek(0) }, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)) {
+                            if (app.meetings.weekOffset != 0) {
+                                TextButton(onClick = { app.meetings.changeWeek(0) }, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)) {
                                     Text(s3.meetingThisWeek, color = c.adjusted, fontSize = 13.sp)
                                 }
                             }
                         }
-                        IconButton(onClick = { app.changeMeetingWeek(1) }) {
+                        IconButton(onClick = { app.meetings.changeWeek(1) }) {
                             Icon(Icons.Default.ChevronRight, contentDescription = s3.meetingNextWeek)
                         }
                     }
@@ -119,13 +119,13 @@ fun MeetingScreen(app: AppController) {
                     load == MeetingLoad.MISSING && !haveSaved -> Text(s3.meetingNoLanguage, color = c.textSub, modifier = Modifier.padding(top = 16.dp))
                     load == MeetingLoad.FAILED && !haveSaved -> Column(Modifier.padding(top = 16.dp)) {
                         Text(s3.meetingNoData, color = c.textSub)
-                        OutlinedButton(onClick = { app.loadMeetings(lang, force = true) }, modifier = Modifier.padding(top = 8.dp)) {
+                        OutlinedButton(onClick = { app.meetings.loadPrograms(lang, force = true) }, modifier = Modifier.padding(top = 8.dp)) {
                             Text(s3.meetingRetry, color = c.textMain)
                         }
                     }
                     plan == null && load != MeetingLoad.LOADING -> {
                         // A gap between weeks that are there: no meeting that week (the Memorial, a convention)
-                        val weeks = app.meetingProgram(lang)?.weeks.orEmpty()
+                        val weeks = app.meetings.program(lang)?.weeks.orEmpty()
                         val gap = weeks.any { it.start < start } && weeks.any { it.start > start }
                         Text(if (gap) s3.meetingNoneThisWeek else s3.meetingNoWeek, color = c.textSub, modifier = Modifier.padding(top = 16.dp))
                     }
@@ -143,7 +143,7 @@ fun MeetingScreen(app: AppController) {
                     Column(Modifier.padding(vertical = 4.dp)) {
                         plan.segments.forEachIndexed { i, seg ->
                             if (i > 0) HorizontalDivider(Modifier.padding(horizontal = 14.dp))
-                            val subparts = app.subpartsOf(plan, seg)
+                            val subparts = app.meetings.subpartsOf(plan, seg)
                             val open = expandedId == seg.id
                             Row(
                                 Modifier
@@ -173,7 +173,7 @@ fun MeetingScreen(app: AppController) {
                         }
                         HorizontalDivider(Modifier.padding(horizontal = 14.dp))
                         // The totals are those of the meeting as it will run (sub-parts longer than their part make it longer)
-                        val running = expandSubparts(plan) { app.subpartsOf(plan, it) }
+                        val running = expandSubparts(plan) { app.meetings.subpartsOf(plan, it) }
                         val buffer = running.spareSeconds
                         Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
                             Text(
@@ -217,7 +217,7 @@ fun MeetingScreen(app: AppController) {
                         Surface(
                             onClick = {
                                 pickFor = null
-                                app.subpartsFromSpeech(plan, part, speech)
+                                app.meetings.subpartsFromSpeech(plan, part, speech)
                             },
                             color = c.surfaceHigh,
                             shape = MaterialTheme.shapes.medium,
@@ -291,8 +291,8 @@ private fun SubpartsEditor(
             key(sub.id) {
                 SubpartRow(
                     subpart = sub,
-                    onChange = { app.updateSubpart(plan, part, it) },
-                    onRemove = { app.removeSubpart(plan, part, sub.id) },
+                    onChange = { app.meetings.updateSubpart(plan, part, it) },
+                    onRemove = { app.meetings.removeSubpart(plan, part, sub.id) },
                 )
             }
         }
@@ -313,14 +313,14 @@ private fun SubpartsEditor(
             )
         }
         FlowRow {
-            TextButton(onClick = { app.addSubpart(plan, part) }) {
+            TextButton(onClick = { app.meetings.addSubpart(plan, part) }) {
                 Icon(Icons.Default.Add, contentDescription = null, tint = c.textMain, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))
                 Text(s3.subpartAdd, color = c.textMain)
             }
             TextButton(onClick = onPickSpeech) { Text(s3.subpartFromSpeech, color = c.textMain) }
             if (subparts.isNotEmpty()) {
-                TextButton(onClick = { app.setSubparts(plan, part, emptyList()) }) { Text(s3.subpartClear, color = c.textSub) }
+                TextButton(onClick = { app.meetings.setSubparts(plan, part, emptyList()) }) { Text(s3.subpartClear, color = c.textSub) }
             }
         }
     }

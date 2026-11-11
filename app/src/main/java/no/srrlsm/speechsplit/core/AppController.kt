@@ -18,9 +18,6 @@ enum class AppScreen { LIBRARY, ARCHIVE, SETTINGS, EDIT, READY, TIMER, HISTORY, 
 /** "Practise one part": which speech and part, and the time of every attempt so far. */
 data class DrillState(val planId: String, val index: Int, val attempts: List<Int> = emptyList())
 
-/** Loading state of one language's meeting programs. */
-enum class MeetingLoad { IDLE, LOADING, OK, FAILED, MISSING }
-
 /** A one-off signal for the UI (e.g. flash the screen edge). A new id means a new event. */
 data class AlertEvent(val id: Int, val status: TimeStatus)
 
@@ -402,7 +399,7 @@ class AppController(
     fun exportFile(plan: SpeechPlan?, scope: ExportScope): Pair<String, String> = when {
         scope == ExportScope.LIBRARY || plan == null ->
             "Speech Split ${isoDate(platform.epochMs())}.$SPEECH_FILE_EXTENSION" to
-                store.exportLibraryFile(speechPlans.toList(), runs, folders, meetingSubparts, settings)
+                store.exportLibraryFile(speechPlans.toList(), runs, folders, meetings.subparts, settings)
         scope == ExportScope.SPEECH_WITH_HISTORY -> speechFileName(plan.title) to store.exportPlanFile(plan, runsFor(plan.id))
         else -> speechFileName(plan.title) to store.exportPlanFile(plan)
     }
@@ -480,7 +477,7 @@ class AppController(
             val ids = file.plans.map { it.id }.toSet()
             runs = capRuns(file.runs.filter { it.planId in ids || isMeeting(it) })
             count = file.plans.size
-            meetingSubparts = file.subparts
+            meetings.replaceSubparts(file.subparts)
             // The settings in the backup: the choices only, and nothing this device can't do
             file.settings?.let { b ->
                 updateSettings {
@@ -504,9 +501,8 @@ class AppController(
             runs = capRuns(runs + file.runs.filter { it.id !in haveRuns && (it.planId in ids || isMeeting(it)) })
             count = added.size
             // Sub-parts for parts that have none here; what's here is kept
-            meetingSubparts = file.subparts + meetingSubparts
+            meetings.replaceSubparts(file.subparts + meetings.subparts)
         }
-        store.saveMeetingSubparts(meetingSubparts)
         store.saveFolders(folders)
         store.savePlans(speechPlans)
         store.saveRuns(runs)
@@ -736,28 +732,8 @@ class AppController(
     }
 
     // --- Meeting mode ------------------------------------------------------------------
-    // The week's program comes from the website (docs/meetings/<lang>.json, made from the
-    // meeting workbook with tools/workbook_to_json.py). The last copy is kept, so it works offline.
-
-    /** Weeks from this week on the meeting screen (0 = this week). */
-    var meetingWeekOffset by mutableStateOf(0)
-        private set
-
-    // Plain map (read during drawing, so it must not be Compose state); the counter tells the UI it changed
-    private val meetingPrograms = HashMap<String, MeetingProgram?>()
-    private var meetingProgramsVersion by mutableStateOf(0)
-    var meetingLoad by mutableStateOf<Map<String, MeetingLoad>>(emptyMap())
-        private set
-
-    /** "no", "en" or "de": the language of the program (chosen on the meeting screen, or the app's). */
-    val meetingLanguage: String
-        get() = settings.meetingLanguage.takeIf { it in MEETING_LANGUAGES } ?: languageCode
-
-    fun meetingProgram(lang: String): MeetingProgram? {
-        meetingProgramsVersion // read, so screens update when a new program arrives
-        if (lang !in meetingPrograms) meetingPrograms[lang] = store.loadMeetingCache(lang)?.let { store.readMeetingProgram(it) }
-        return meetingPrograms[lang]
-    }
+    /** Which meeting and week is picked, the programs and the sub-parts (MeetingController.kt). */
+    val meetings = MeetingController(this, store, platform, scope)
 
     fun openMeeting() {
         guardEdits {
@@ -765,96 +741,12 @@ class AppController(
             isQuickTimer = false
             drill = null
             currentScreen = AppScreen.MEETING
-            loadMeetings(meetingLanguage)
+            meetings.loadPrograms(meetings.language)
         }
     }
-
-    /** Fetches the newest programs for [lang] (once per session, unless [force]). */
-    fun loadMeetings(lang: String, force: Boolean = false) {
-        val state = meetingLoad[lang] ?: MeetingLoad.IDLE
-        if (state == MeetingLoad.LOADING || (state == MeetingLoad.OK && !force)) return
-        meetingProgram(lang) // the saved copy, while the new one loads
-        meetingLoad = meetingLoad + (lang to MeetingLoad.LOADING)
-        scope.launch {
-            val result = platform.fetchText(MEETINGS_URL + "$lang.json")
-            val program = result?.text?.let { store.readMeetingProgram(it) }
-            meetingLoad = meetingLoad + (lang to when {
-                program != null -> MeetingLoad.OK
-                result?.status == 404 -> MeetingLoad.MISSING
-                else -> MeetingLoad.FAILED
-            })
-            if (program != null && result != null) {
-                meetingPrograms[lang] = program
-                meetingProgramsVersion++
-                store.saveMeetingCache(lang, result.text)
-            }
-        }
-    }
-
-    fun setMeetingKind(kind: MeetingKind) = updateSettings { it.copy(meetingKind = kind) }
-
-    fun setMeetingLanguage(lang: String) {
-        updateSettings { it.copy(meetingLanguage = lang) }
-        loadMeetings(lang)
-    }
-
-    fun changeMeetingWeek(by: Int) {
-        meetingWeekOffset = if (by == 0) 0 else meetingWeekOffset + by
-    }
-
-    /** Monday of the week shown on the meeting screen, "2026-11-02". */
-    val meetingWeekStart: String
-        get() = mondayOf(platform.localDateIso(platform.epochMs()), meetingWeekOffset)
-
-    /** The meeting picked on the meeting screen, or null when there's no program for that week. */
-    fun chosenMeeting(): SpeechPlan? {
-        val lang = meetingLanguage
-        val program3 = strings3ForCode(lang)
-        if (settings.meetingKind == MeetingKind.WEEKEND) return weekendMeeting(program3, strings3.meetingWeekendTitle)
-        val week = meetingProgram(lang)?.weeks?.firstOrNull { it.start == meetingWeekStart && it.parts.isNotEmpty() } ?: return null
-        return midweekMeeting(week, program3, strings3.meetingMidweekTitle(weekLabel(week.start, languageCode)))
-    }
-
-    // --- Sub-parts of a meeting part ----------------------------------------------------
-    // Kept per week and part (see subpartsKey), so the meeting can be prepared in advance.
-
-    /** All sub-parts, by [subpartsKey]. */
-    var meetingSubparts by mutableStateOf(store.loadMeetingSubparts())
-        private set
-
-    fun subpartsOf(plan: SpeechPlan, segment: SpeechSegment): List<SpeechSegment> =
-        meetingSubparts[subpartsKey(plan.meeting, segment.id)].orEmpty()
-
-    /** Replaces a part's sub-parts (an empty list removes them) and saves. */
-    fun setSubparts(plan: SpeechPlan, segment: SpeechSegment, subparts: List<SpeechSegment>) {
-        val key = subpartsKey(plan.meeting, segment.id)
-        val all = if (subparts.isEmpty()) meetingSubparts - key else meetingSubparts + (key to subparts)
-        // Old weeks are dropped along the way, so this never grows without end
-        val oldest = mondayOf(platform.localDateIso(platform.epochMs()), -8)
-        meetingSubparts = pruneSubparts(all, oldest)
-        store.saveMeetingSubparts(meetingSubparts)
-    }
-
-    /** A new sub-part at the end, with the time that's left of the part (at least a minute). */
-    fun addSubpart(plan: SpeechPlan, segment: SpeechSegment) {
-        val have = subpartsOf(plan, segment)
-        val left = segment.targetSeconds - have.sumOf { it.targetSeconds }
-        setSubparts(plan, segment, have + SpeechSegment(title = strings3.subpartNew, targetSeconds = if (left > 0) left else 60))
-    }
-
-    fun updateSubpart(plan: SpeechPlan, segment: SpeechSegment, subpart: SpeechSegment) =
-        setSubparts(plan, segment, subpartsOf(plan, segment).map { if (it.id == subpart.id) subpart else it })
-
-    fun removeSubpart(plan: SpeechPlan, segment: SpeechSegment, subpartId: String) =
-        setSubparts(plan, segment, subpartsOf(plan, segment).filterNot { it.id == subpartId })
-
-    /** The parts of a saved speech become the sub-parts (as copies: the speech isn't changed). */
-    fun subpartsFromSpeech(plan: SpeechPlan, segment: SpeechSegment, speech: SpeechPlan) =
-        setSubparts(plan, segment, speech.segments.map { SpeechSegment(title = it.title, targetSeconds = it.targetSeconds) })
 
     fun startMeeting() {
-        val chosen = chosenMeeting() ?: return
-        val plan = expandSubparts(chosen) { subpartsOf(chosen, it) }
+        val plan = meetings.chosenToRun() ?: return
         activePlan = plan
         isQuickTimer = false
         drill = null
@@ -878,7 +770,7 @@ class AppController(
     /** History of the meeting kind picked on the meeting screen. */
     fun openMeetingHistory() {
         val kind = settings.meetingKind
-        activePlan = chosenMeeting() ?: SpeechPlan(
+        activePlan = meetings.chosen() ?: SpeechPlan(
             id = if (kind == MeetingKind.WEEKEND) WEEKEND_MEETING_ID else MIDWEEK_MEETING_ID,
             title = strings3.meetingMidweek,
             meeting = MeetingInfo(kind, if (kind == MeetingKind.MIDWEEK) MIDWEEK_BUFFER_SECONDS else 0),

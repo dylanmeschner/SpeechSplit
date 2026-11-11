@@ -143,7 +143,7 @@ fun main(args: Array<String>) {
         }
         shot("10-meeting") { app, _ -> app.openMeeting() }
         shot("15-meeting-timer") { app, p ->
-            app.setMeetingLanguage("no"); app.startMeeting()
+            app.meetings.setLanguage("no"); app.startMeeting()
             p.now = 300_000; app.nextSegment(); p.now += 75_000; app.nextSegment()
             p.now += 640_000; app.engine.tick()
         }
