@@ -1,0 +1,18 @@
+{
+  "_about": "Shared test cases: the apps (VectorsTest.kt) and the web version (tools/vectors_web_test.js) must both give these answers.",
+  "parseTime": [["4.30", 270], ["4,30", 270], ["4:30", 270], ["4.5", 290], ["4.05", 245], ["12", 720], ["", 0], ["abc", 0], [" 1.3 ", 90], ["0.20", 20]],
+  "formatTime": [[270, "04:30"], [0, "00:00"], [-5, "-00:05"], [3599, "59:59"], [3600, "1:00:00"], [6300, "1:45:00"], [-3725, "-1:02:05"]],
+  "formatDiff": [[10, "+00:10"], [-10, "-00:10"], [0, "00:00"], [3700, "+1:01:40"]],
+  "timeForInput": [[270, "4.30"], [120, "2"], [65, "1.05"], [0, "0"]],
+  "verdict": [[0, 60, "ON_TIME"], [-5, 60, "ON_TIME"], [14, 60, "BIT_OVER"], [16, 60, "OVER"], [-15, 60, "BIT_UNDER"], [-100, 300, "UNDER"], [15, 300, "ON_TIME"], [45, 300, "BIT_OVER"], [46, 300, "OVER"]],
+  "runDiff": [
+    {"target": 600, "actual": 570, "buffer": 120, "meeting": false, "diff": -30, "used": 0},
+    {"target": 600, "actual": 600, "buffer": 120, "meeting": false, "diff": 0, "used": 0},
+    {"target": 600, "actual": 690, "buffer": 120, "meeting": false, "diff": 0, "used": 90},
+    {"target": 600, "actual": 765, "buffer": 120, "meeting": false, "diff": 45, "used": 120},
+    {"target": 600, "actual": 690, "buffer": 0, "meeting": false, "diff": 90, "used": 0},
+    {"target": 6000, "actual": 6110, "buffer": 300, "meeting": true, "diff": -190, "used": 0},
+    {"target": 6000, "actual": 6400, "buffer": 300, "meeting": true, "diff": 100, "used": 0}
+  ],
+  "weekLabel": [["2026-11-02", "no", "2.–8. november"], ["2026-11-30", "de", "30. November–6. Dezember"], ["2026-11-02", "en", "November 2–8"], ["2026-12-28", "en", "December 28–January 3"]]
+}

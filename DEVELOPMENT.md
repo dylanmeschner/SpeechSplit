@@ -91,6 +91,15 @@ three languages: `tools/strings3.py`. Change them there and run `python3 tools/s
 - **Second screen** (desktop only): `SecondScreenWindow` in `desktop/.../Main.kt` shows `ui/SecondScreen.kt` on the
   other monitor while the timer is open. Setting `secondScreen`, shortcut S.
 
+## Automatic checks
+
+`.github/workflows/check.yml` runs on every push: the unit tests, a build of the Android and the Windows app,
+and the shared test cases for the web version. A red cross next to a commit on GitHub means one of them failed.
+
+The shared test cases are in `app/src/test/resources/vectors.json`. The apps run them in `VectorsTest.kt`, the web
+version in `tools/vectors_web_test.js` (`npm install --no-save jsdom`, then `node tools/vectors_web_test.js`).
+When a rule changes (how a time is read, how a run is judged), add a case there, so both keep giving the same answer.
+
 ## Meeting mode: new workbooks
 
 The midweek program comes from `docs/meetings/<lang>.json` on the website. The apps and the web version

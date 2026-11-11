@@ -79,6 +79,7 @@ S = {
     "meetingEndedLate": {"en": "The meeting ran {0} over.", "no": "Møtet gikk {0} over tiden.", "de": "Die Versammlung ging {0} über die Zeit."},
     "meetingEndedOnTime": {"en": "The meeting ended right on time.", "no": "Møtet sluttet akkurat på tiden.", "de": "Die Versammlung endete genau pünktlich."},
     "meetingHistoryTitle": {"en": "Meeting history", "no": "Møtehistorikk", "de": "Versammlungsverlauf"},
+    "meetingEndsAt": {"en": "DONE AROUND {0}", "no": "FERDIG CA. KL. {0}", "de": "ENDE CA. {0} UHR"},
 
     # --- Sub-parts of a meeting part (3.1) ----------------------------------------
     "subpartsHint": {

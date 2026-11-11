@@ -215,6 +215,12 @@
     catch (e) { return new Date(ms).toLocaleString(); }
   }
 
+  /** Time of day, "20:45". */
+  function clockTime(ms) {
+    try { return new Date(ms).toLocaleTimeString(lang === "no" ? "nb-NO" : lang, { hour: "2-digit", minute: "2-digit" }); }
+    catch (e) { var d = new Date(ms); return pad2(d.getHours()) + ":" + pad2(d.getMinutes()); }
+  }
+
   // --- Theme -------------------------------------------------------------------
   var darkQuery = matchMedia("(prefers-color-scheme: dark)");
   function applyTheme() {
@@ -765,6 +771,11 @@
     if (scope === "library" || !p) {
       o = { app: "Speech Split", format: 1, kind: "library", folders: data.folders.map(function (x) { return { id: x.id, name: x.name }; }),
         speeches: data.plans.map(function (x) { return planToFile(x, true); }), history: data.runs };
+      if (Object.keys(data.subparts).length) {
+        o.subparts = {};
+        Object.keys(data.subparts).forEach(function (k) { o.subparts[k] = data.subparts[k].map(function (x) { return { id: x.id, title: x.title, target: x.targetSeconds }; }); });
+      }
+      o.settings = settingsToFile();
       return { name: "Speech Split " + new Date().toISOString().slice(0, 10) + ".speechsplit", text: JSON.stringify(o, null, 2) + "\n" };
     }
     var withHistory = scope === "history";
@@ -773,6 +784,35 @@
     Object.keys(pf).forEach(function (k) { if (k !== "createdAt" && k !== "lastUsedAt" && k !== "archived" && k !== "folderId") o[k] = pf[k]; });
     if (withHistory) o.history = runsFor(p.id);
     return { name: speechFileName(p.title), text: JSON.stringify(o, null, 2) + "\n" };
+  }
+  // Settings in a backup: only the choices a person makes, written the way the apps write them
+  var SHARED_SETTINGS = ["language", "themeMode", "celebrateTolerance", "warningPercent", "clockMode", "showAdjusted", "flashAlerts", "vibrateAlerts", "keepScreenOn", "lecternMode", "speechSort"];
+  function settingsToFile() {
+    var s = data.settings, o = {};
+    SHARED_SETTINGS.forEach(function (k) { o[k] = s[k]; });
+    o.runLive = s.runMode === "live";
+    o.meetingKind = s.meetingKind === "weekend" ? "WEEKEND" : "MIDWEEK";
+    o.meetingLanguage = s.meetingLang || "";
+    return o;
+  }
+  function settingsFromFile(o) {
+    var s = data.settings;
+    SHARED_SETTINGS.forEach(function (k) { if (o[k] != null && typeof o[k] === typeof DEFAULT_SETTINGS[k]) s[k] = o[k]; });
+    if (typeof o.runLive === "boolean") s.runMode = o.runLive ? "live" : "practice";
+    if (o.meetingKind) s.meetingKind = o.meetingKind === "WEEKEND" ? "weekend" : "midweek";
+    if (typeof o.meetingLanguage === "string") s.meetingLang = o.meetingLanguage;
+    if (WARNING_OPTIONS.indexOf(s.warningPercent) < 0) s.warningPercent = 10;
+    if (CELEBRATE_OPTIONS.indexOf(s.celebrateTolerance) < 0) s.celebrateTolerance = 0;
+  }
+  function subpartsFromFile(o) {
+    var out = {};
+    if (o && typeof o === "object") Object.keys(o).forEach(function (k) {
+      var list = (Array.isArray(o[k]) ? o[k] : []).filter(Boolean).map(function (x) {
+        return { id: x.id ? String(x.id) : newId(), title: String(x.title || ""), targetSeconds: Math.max(0, parseInt(x.target, 10) || 0) };
+      });
+      if (list.length) out[k] = list;
+    });
+    return out;
   }
   function asFile(x) { try { return new File([x.text], x.name, { type: SPEECH_MIME }); } catch (e) { return null; } }
   function canShareFiles() {
@@ -845,7 +885,8 @@
     if (o.kind === "library" || Array.isArray(o.speeches)) {
       if (!Array.isArray(o.speeches) || !o.speeches.length) return false;
       var folders = (Array.isArray(o.folders) ? o.folders : []).filter(function (x) { return x && x.id && x.name; }).map(function (x) { return { id: String(x.id), name: String(x.name) }; });
-      libraryDialog(o.speeches.filter(function (x) { return x && Array.isArray(x.segments); }).map(function (x) { var p = planFromFile(x, true); p.segments.forEach(function (s) { delete s._old; }); return p; }), cleanRuns(o.history), folders);
+      libraryDialog(o.speeches.filter(function (x) { return x && Array.isArray(x.segments); }).map(function (x) { var p = planFromFile(x, true); p.segments.forEach(function (s) { delete s._old; }); return p; }), cleanRuns(o.history), folders,
+        subpartsFromFile(o.subparts), o.settings && typeof o.settings === "object" ? o.settings : null);
       return "library";
     }
     if (!Array.isArray(o.segments) || !o.segments.length) return false;
@@ -865,7 +906,7 @@
     return true;
   }
   /** A library backup: add what's missing, or (after a second question) replace everything. */
-  function libraryDialog(plans, runs, folders) {
+  function libraryDialog(plans, runs, folders, subparts, settings) {
     var apply = function (replace) {
       closeDialog();
       var count;
@@ -877,6 +918,8 @@
         var ids = {}; plans.forEach(function (p) { ids[p.id] = 1; });
         data.runs = capRuns(runs.filter(function (r) { return ids[r.planId] || isMeeting(r); }));
         count = plans.length;
+        data.subparts = subparts || {};
+        if (settings) settingsFromFile(settings);
         ui.plan = null; ui.folder = null; ui.screen = "library";
       } else {
         var have = {}; data.plans.forEach(function (p) { have[p.id] = 1; });
@@ -887,6 +930,8 @@
         var all = {}; data.plans.forEach(function (p) { all[p.id] = 1; });
         data.runs = capRuns(data.runs.concat(runs.filter(function (r) { return all[r.planId] || isMeeting(r); })));
         count = added.length;
+        // Sub-parts for parts that have none here; what's here is kept
+        Object.keys(subparts || {}).forEach(function (k) { if (!data.subparts[k]) data.subparts[k] = subparts[k]; });
       }
       save(); toast(f("importedCount")(count)); render();
     };
@@ -1317,7 +1362,7 @@
         '<button class="ibtn subtle" data-a="stop" aria-label="' + esc(t("stopTimer")) + '">' + icon("close") + "</button></div>" +
         '<div class="t-total"><div><div class="label" style="font-size:10px">' + esc(f("totalPlan")(fmt(planTarget(p)))) + '</div><div class="big tnum" id="t-total"></div></div>' +
         '<div style="text-align:right;padding-bottom:6px"><div class="label" style="font-size:10px;margin-bottom:4px">' + esc(t("aheadBehind")) + '</div><span class="pill tnum" id="t-diff"></span></div></div>' +
-        (bufferOf(p) && !fin ? '<div class="bufline" id="t-buffer"></div>' : "");
+        ((bufferOf(p) || p.meeting) && !fin ? '<div class="bufline" id="t-buffer"></div>' : "");
       if (!fin) {
         html += '<div class="t-seg"><div class="row"><span class="label" style="font-size:10px">' + esc(f("nowOf")(idx + 1, segs.length)) + '</span><span class="label" style="font-size:10px">' + esc(t("target") + "  " + fmt(segs[idx].targetSeconds)) + "</span></div>" +
           (segs[idx].group ? '<div class="sub small grp">' + esc(segs[idx].group) + "</div>" : "") +
@@ -1388,8 +1433,15 @@
     setPill($("t-diff"), schedule);
     if ($("t-buffer")) {
       // The meeting's spare minutes shrink as soon as the program runs late
-      var left = bufferOf(p) - Math.max(0, schedule);
-      $("t-buffer").textContent = left >= 0 ? t3("bufferLeft")(fmt(left)) : t3("bufferUsed")(fmt(-left));
+      var left = bufferOf(p) - Math.max(0, schedule), parts = [];
+      if (bufferOf(p)) parts.push(left >= 0 ? t3("bufferLeft")(fmt(left)) : t3("bufferUsed")(fmt(-left)));
+      // A meeting: also the time of day it will be done, if the rest goes to plan
+      if (p.meeting && cur) {
+        var rest = Math.max(0, cur.targetSeconds - el[idx]);
+        for (var j = idx + 1; j < segs.length; j++) rest += segs[j].targetSeconds;
+        parts.push(t3("meetingEndsAt")(clockTime(Date.now() + rest * 1000)));
+      }
+      $("t-buffer").textContent = parts.join("   ·   ");
       $("t-buffer").className = "bufline" + (left < 0 ? " over" : left < bufferOf(p) ? " used" : "");
     }
     if (cur && !fin) {
@@ -1829,5 +1881,7 @@
   if ("serviceWorker" in navigator && location.protocol === "https:") {
     navigator.serviceWorker.register("sw.js").catch(function () {});
   }
-  window.SpeechSplitWeb = { data: data, E: E, ui: ui }; // for debugging in the console
+  // For debugging in the console, and for the shared test cases (tools/vectors_web_test.js)
+  window.SpeechSplitWeb = { data: data, E: E, ui: ui,
+    fn: { parseTime: parseTime, fmt: fmt, fmtDiff: fmtDiff, timeForInput: timeForInput, verdict: verdict, runDiff: runDiff, bufferUsed: bufferUsed, weekLabel: weekLabel } };
 })();

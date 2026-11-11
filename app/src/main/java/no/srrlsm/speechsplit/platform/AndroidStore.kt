@@ -52,6 +52,11 @@ class AndroidStore(context: Context) : AppStore {
     override fun exportLibraryFile(plans: List<SpeechPlan>, runs: List<PracticeRun>, folders: List<Folder>): String =
         JsonCodec.libraryFileText(plans, runs, folders)
 
+    override fun exportLibraryFile(
+        plans: List<SpeechPlan>, runs: List<PracticeRun>, folders: List<Folder>,
+        subparts: Map<String, List<SpeechSegment>>, settings: AppSettings?,
+    ): String = JsonCodec.libraryFileText(plans, runs, folders, subparts, settings)
+
     // --- Folders and meeting programs -----------------------------------------
     override fun loadFolders(): List<Folder> = JsonCodec.foldersFromJson(planPrefs.getString(KEY_FOLDERS, "[]") ?: "[]")
 

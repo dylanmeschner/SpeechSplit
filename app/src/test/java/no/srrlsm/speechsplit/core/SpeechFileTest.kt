@@ -163,6 +163,23 @@ class SpeechFileTest {
     }
 
     @Test
+    fun libraryBackupKeepsSubpartsAndSettings() {
+        val subs = mapOf("weekend/we-talk" to listOf(intro, end))
+        val settings = AppSettings(warningPercent = 20, runLive = true, meetingKind = MeetingKind.WEEKEND, tutorialSeen = true, lastSeenVersion = "3.1")
+        val text = JsonCodec.libraryFileText(listOf(talk), emptyList(), emptyList(), subs, settings)
+        assertFalse(text.contains("lastSeenVersion"))   // belongs to the device, not to the backup
+        val file = JsonCodec.readSpeechFile(text, "x")!!
+        assertEquals(subs, file.subparts)
+        assertEquals(20, file.settings!!.warningPercent)
+        assertTrue(file.settings!!.runLive)
+        assertEquals(MeetingKind.WEEKEND, file.settings!!.meetingKind)
+        // An older backup has neither
+        val old = JsonCodec.readSpeechFile(JsonCodec.libraryFileText(listOf(talk), emptyList()), "x")!!
+        assertTrue(old.subparts.isEmpty())
+        assertNull(old.settings)
+    }
+
+    @Test
     fun meetingProgramFileReads() {
         val text = """{"format":1,"lang":"no","weeks":[{"start":"2026-11-02","reading":"Jeremia 49–50","songs":[1,44,33],
             "parts":[{"n":1,"title":"Hjelp andre","min":10},{"n":7,"title":"Glem aldri","min":15}],"livingFrom":7}],"updated":"2026-11-04"}"""

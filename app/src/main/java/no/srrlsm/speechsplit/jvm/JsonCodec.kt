@@ -94,7 +94,13 @@ object JsonCodec {
     }
 
     /** A .speechsplit library backup: every speech (archived ones too), the folders and all practice history. */
-    fun libraryFileText(plans: List<SpeechPlan>, runs: List<PracticeRun>, folders: List<Folder> = emptyList()): String =
+    fun libraryFileText(
+        plans: List<SpeechPlan>,
+        runs: List<PracticeRun>,
+        folders: List<Folder> = emptyList(),
+        subparts: Map<String, List<SpeechSegment>> = emptyMap(),
+        settings: AppSettings? = null,
+    ): String =
         JSONObject()
             .put("app", "Speech Split")
             .put("format", 1)
@@ -102,6 +108,14 @@ object JsonCodec {
             .put("folders", foldersToJsonArray(folders))
             .put("speeches", JSONArray().apply { plans.forEach { put(planToJson(it, includeIds = true)) } })
             .put("history", JSONArray().apply { runs.forEach { put(runToJson(it)) } })
+            .apply {
+                if (subparts.isNotEmpty()) put("subparts", JSONObject(subpartsToJson(subparts)))
+                // Only the choices a person makes, not what belongs to one device (version seen, introduction shown)
+                if (settings != null) put("settings", JSONObject(settingsToJson(settings)).apply {
+                    remove("tutorialSeen")
+                    remove("lastSeenVersion")
+                })
+            }
             .toString(2) + "\n"
 
     /** Reads any Speech Split file or export text. Null if it isn't one. */
@@ -116,7 +130,9 @@ object JsonCodec {
                 runCatching { planFromJson(arr.getJSONObject(i), fallbackTitle) }.getOrNull()
             }.distinctBy { it.id }
             val folders = o.optJSONArray("folders")?.let { foldersFromJsonArray(it) } ?: emptyList()
-            return SpeechFile(plans, runs, isLibrary = true, folders = folders)
+            val subparts = o.optJSONObject("subparts")?.let { subpartsFromJson(it.toString()) } ?: emptyMap()
+            val settings = o.optJSONObject("settings")?.let { runCatching { settingsFromJson(it.toString()) }.getOrNull() }
+            return SpeechFile(plans, runs, isLibrary = true, folders = folders, subparts = subparts, settings = settings)
         }
         val plan = runCatching { planFromJson(o, fallbackTitle) }.getOrNull() ?: return null
         return SpeechFile(listOf(plan), runs, isLibrary = false)

@@ -402,7 +402,7 @@ class AppController(
     fun exportFile(plan: SpeechPlan?, scope: ExportScope): Pair<String, String> = when {
         scope == ExportScope.LIBRARY || plan == null ->
             "Speech Split ${isoDate(platform.epochMs())}.$SPEECH_FILE_EXTENSION" to
-                store.exportLibraryFile(speechPlans.toList(), runs, folders)
+                store.exportLibraryFile(speechPlans.toList(), runs, folders, meetingSubparts, settings)
         scope == ExportScope.SPEECH_WITH_HISTORY -> speechFileName(plan.title) to store.exportPlanFile(plan, runsFor(plan.id))
         else -> speechFileName(plan.title) to store.exportPlanFile(plan)
     }
@@ -480,6 +480,19 @@ class AppController(
             val ids = file.plans.map { it.id }.toSet()
             runs = capRuns(file.runs.filter { it.planId in ids || isMeeting(it) })
             count = file.plans.size
+            meetingSubparts = file.subparts
+            // The settings in the backup: the choices only, and nothing this device can't do
+            file.settings?.let { b ->
+                updateSettings {
+                    it.copy(
+                        language = b.language, themeMode = b.themeMode, celebrateTolerance = b.celebrateTolerance,
+                        warningPercent = b.warningPercent, clockMode = b.clockMode, showAdjusted = b.showAdjusted,
+                        flashAlerts = b.flashAlerts, vibrateAlerts = b.vibrateAlerts && platform.canVibrate,
+                        keepScreenOn = b.keepScreenOn, lecternMode = b.lecternMode, speechSort = b.speechSort,
+                        runLive = b.runLive, meetingKind = b.meetingKind, meetingLanguage = b.meetingLanguage,
+                    )
+                }
+            }
         } else {
             val have = speechPlans.map { it.id }.toSet()
             val added = file.plans.filter { it.id !in have }
@@ -490,7 +503,10 @@ class AppController(
             val haveRuns = runs.map { it.id }.toSet()
             runs = capRuns(runs + file.runs.filter { it.id !in haveRuns && (it.planId in ids || isMeeting(it)) })
             count = added.size
+            // Sub-parts for parts that have none here; what's here is kept
+            meetingSubparts = file.subparts + meetingSubparts
         }
+        store.saveMeetingSubparts(meetingSubparts)
         store.saveFolders(folders)
         store.savePlans(speechPlans)
         store.saveRuns(runs)
@@ -843,6 +859,20 @@ class AppController(
         isQuickTimer = false
         drill = null
         startTimer()
+    }
+
+    /**
+     * When the running meeting will be done if the rest goes to plan: now, plus what's left of
+     * this part, plus the parts still to come. Null when no meeting is being timed.
+     */
+    fun meetingEndClock(): String? {
+        val plan = activePlan?.takeIf { it.meeting != null } ?: return null
+        if (!engine.isActive || engine.isFinished) return null
+        val i = engine.currentIndex
+        val current = plan.segments.getOrNull(i) ?: return null
+        val left = (current.targetSeconds - engine.elapsedSeconds(i)).coerceAtLeast(0) +
+            plan.segments.drop(i + 1).sumOf { it.targetSeconds }
+        return platform.formatClock(platform.epochMs() + left * 1000L)
     }
 
     /** History of the meeting kind picked on the meeting screen. */

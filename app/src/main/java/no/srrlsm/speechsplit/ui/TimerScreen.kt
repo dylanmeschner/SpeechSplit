@@ -179,11 +179,20 @@ fun TimerScreen(app: AppController) {
 
                     // The spare time (a meeting's, or the speech's own buffer) shrinks as soon as the program runs late
                     val buffer = plan.spareSeconds
-                    if (buffer > 0 && !finished) {
+                    // A meeting: also the time of day it will be done, if the rest goes to plan
+                    val endClock = app.meetingEndClock()
+                    if ((buffer > 0 || endClock != null) && !finished) {
                         val left = buffer - scheduleDiff.coerceAtLeast(0)
                         val s3 = LocalStrings3.current
                         Text(
-                            if (left >= 0) s3.bufferLeft(formatTime(left)) else s3.bufferUsed(formatTime(-left)),
+                            listOfNotNull(
+                                when {
+                                    buffer <= 0 -> null
+                                    left >= 0 -> s3.bufferLeft(formatTime(left))
+                                    else -> s3.bufferUsed(formatTime(-left))
+                                },
+                                endClock?.let { s3.meetingEndsAt(it) },
+                            ).joinToString("   ·   "),
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 0.5.sp,

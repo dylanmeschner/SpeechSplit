@@ -85,6 +85,11 @@ class DesktopStore(private val dir: File = appDataDir()) : AppStore {
     override fun exportLibraryFile(plans: List<SpeechPlan>, runs: List<PracticeRun>, folders: List<Folder>): String =
         JsonCodec.libraryFileText(plans, runs, folders)
 
+    override fun exportLibraryFile(
+        plans: List<SpeechPlan>, runs: List<PracticeRun>, folders: List<Folder>,
+        subparts: Map<String, List<SpeechSegment>>, settings: AppSettings?,
+    ): String = JsonCodec.libraryFileText(plans, runs, folders, subparts, settings)
+
     override fun readSpeechFile(text: String, fallbackTitle: String): SpeechFile? =
         JsonCodec.readSpeechFile(text, fallbackTitle)
 
@@ -160,6 +165,8 @@ class DesktopPlatform : PlatformServices {
     override fun epochMs(): Long = System.currentTimeMillis()
     override fun formatDateTime(epochMs: Long): String =
         DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(epochMs))
+
+    override fun formatClock(epochMs: Long): String = DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(epochMs))
 
     override val canVibrate: Boolean = false
     override fun vibrate(long: Boolean) {}
